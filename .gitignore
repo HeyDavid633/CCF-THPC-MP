@@ -1,4 +1,4 @@
-demo/pytorch-cifar100/**/__pycache__
-demo/pytorch-cifar100/data
-demo/pytorch-cifar100/checkpoint
-demo/pytorch-cifar100/runs
+demo/**/__pycache__
+demo/data
+demo/checkpoint
+demo/runs
