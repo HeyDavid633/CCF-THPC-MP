@@ -1,10 +1,11 @@
-# 2024.06.10 原始训练脚本 
-# 选择这个人的代码做为基础 因为包含了很多模型，而且加混合精度很方便
+# 2024.06.12 amp训练脚本  
 # 
-# 1. 一个比较原始的训练脚本，至少实现基本的训练过程（输出精度等信息）
-# 2. 还需要绘制精度、曲线等信息
-#  
+# 更改了 脚本的入口参数使得更便于我的测试
+# 
+# 自动混精 python train.py -net vgg16 -epoch 5 -enable_amp Ture 
+# FP32    python train.py -net vgg16 -epoch 5
 
+import csv
 import os
 import sys
 import argparse
@@ -21,12 +22,29 @@ from tqdm import tqdm
 
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from torch.cuda.amp import GradScaler, autocast
 
 from conf import settings
 from utils import get_network, get_training_dataloader, get_test_dataloader, WarmUpLR, \
-    most_recent_folder, most_recent_weights, last_epoch, best_acc_weights
+    most_recent_folder, most_recent_weights, last_epoch, best_acc_weights, torch_cuda_active
+    
+scaler = GradScaler(enabled=True)
+csv_filename = 'loss.csv'
+        
+    
+def append_info_to_csv(info_data, filename):
+    with open(filename, mode='a', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow([info_data])
 
-def train(epoch):
+def append_to_csv(epoch, loss, filename):
+    with open(filename, mode='a', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow([epoch, loss])
+
+
+
+def amp_train(epoch):
     
     net.train()
     
@@ -38,40 +56,57 @@ def train(epoch):
             labels = labels.cuda()
             images = images.cuda()
 
-        optimizer.zero_grad()
-        outputs = net(images)
-        loss = loss_function(outputs, labels)
-        loss.backward()
-        optimizer.step()
+        #适用于 AMP 的训练
+        optimizer.zero_grad(set_to_none=True)
+        with autocast():
+            outputs = net(images)
+            loss = loss_function(outputs, labels)
+        scaler.scale(loss).backward()  # Scale the loss and call backward
+        scaler.step(optimizer)  # Unscales the gradients of optimizer's assigned params in-place
+        scaler.update()  # Updates the scale for next iteration.
         running_loss += loss.item()
+        
+        postfix = {'Loss': f"{running_loss / (batch_index + 1):.4f}", 'LR': f"{optimizer.param_groups[0]['lr']:.4f}"}
+        tqdm_bar.set_postfix(**postfix)
+        
+        if epoch <= args.warm:
+            warmup_scheduler.step()
 
-        n_iter = (epoch - 1) * len(cifar100_training_loader) + batch_index + 1
+    append_to_csv(epoch, running_loss / len(cifar100_training_loader), csv_filename)    
+        
+    
+def fp32_train(epoch):
+    
+    net.train()
 
-        last_layer = list(net.children())[-1]
-        for name, para in last_layer.named_parameters():
-            if 'weight' in name:
-                writer.add_scalar('LastLayerGradients/grad_norm2_weights', para.grad.norm(), n_iter)
-            if 'bias' in name:
-                writer.add_scalar('LastLayerGradients/grad_norm2_bias', para.grad.norm(), n_iter)
+    running_loss = 0.0
+    tqdm_bar = tqdm(cifar100_training_loader, desc=f'Training Epoch {epoch}', ncols=100) 
+    
+    for batch_index, (images, labels) in enumerate(tqdm_bar):
+        if args.gpu:
+            labels = labels.cuda()
+            images = images.cuda()
 
-        #update training loss for each iteration
-        writer.add_scalar('Train/loss', loss.item(), n_iter)
+        optimizer.zero_grad() # 清零梯度以免累积
+        outputs = net(images) # 前向传播 得到预测输出
+        loss = loss_function(outputs, labels) # 计算预测输出与真实标签之间的损失
+        loss.backward() # 反向 计算梯度
+        optimizer.step() # 根据梯度更新模型参数
+        running_loss += loss.item() # 累计当前batch的loss到running_loss
         
         postfix = {'Loss': f"{running_loss / (batch_index + 1):.4f}", 'LR': f"{optimizer.param_groups[0]['lr']:.4f}"}
         tqdm_bar.set_postfix(**postfix)
 
+        # 学习率预热 --- 为了训练稳定高效
         if epoch <= args.warm:
             warmup_scheduler.step()
 
-    for name, param in net.named_parameters():
-        layer, attr = os.path.splitext(name)
-        attr = attr[1:]
-        writer.add_histogram("{}/{}".format(layer, attr), param, epoch)
-
+    #写入本次epoch的 loss值
+    append_to_csv(epoch, running_loss / len(cifar100_training_loader), csv_filename)   
     
     
 @torch.no_grad()
-def eval_training(epoch=0, tb=True):
+def eval_training(epoch=0, tb=False):
 
     start = time.time()
     net.eval()
@@ -99,13 +134,17 @@ def eval_training(epoch=0, tb=True):
     
     if epoch % 5 == 0:
         print('Evaluating Network.....')
-        print('Test set: Epoch: {}, Average loss: {:.4f}, Accuracy: {:.4f}, Time consumed:{:.2f}s \n'.format(
+        print('Test set: Epoch: {}, Average loss: {:.4f}, Accuracy: {:.4f}, Time consumed: {:.2f}s \n'.format(
             epoch,
             test_loss / len(cifar100_test_loader.dataset),
             correct.float() / len(cifar100_test_loader.dataset),
             finish - start
         ))
-    
+        
+        if epoch == settings.EPOCH:
+            accuracy_num = correct.float() / len(cifar100_test_loader.dataset)
+            append_info_to_csv(round(float(accuracy_num), 4), csv_filename)
+        
 
     #add informations to tensorboard
     if tb:
@@ -119,14 +158,21 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-net', type=str, required=True, help='net type')
-    parser.add_argument('-gpu', action='store_true', default=False, help='use gpu or not')
-    parser.add_argument('-batch_size', type=int, default=128, help='batch size for dataloader')
+    parser.add_argument('-epoch', type=int, default=5, help='epoch to train')
+    parser.add_argument('-enable_amp', type=str, default=False, help='if use gpu')
+    parser.add_argument('-gpu', type=str, default=True, help='if use gpu')
+    parser.add_argument('-batch_size', type=int, default=256, help='batch size for dataloader')
     parser.add_argument('-warm', type=int, default=1, help='warm up training phase')
     parser.add_argument('-lr', type=float, default=0.1, help='initial learning rate')
     args = parser.parse_args()
-
     net = get_network(args)
-
+    settings.EPOCH = args.epoch
+    if args.enable_amp:
+        csv_filename = 'log/' + args.net + '_amp_' + str(args.epoch) + '_' + csv_filename    
+    else:
+        csv_filename = 'log/' + args.net + '_fp32_' + str(args.epoch) + '_' + csv_filename
+    
+    
     #data preprocessing:
     cifar100_training_loader = get_training_dataloader(
         settings.CIFAR100_TRAIN_MEAN,
@@ -150,8 +196,15 @@ if __name__ == '__main__':
     iter_per_epoch = len(cifar100_training_loader)
     warmup_scheduler = WarmUpLR(optimizer, iter_per_epoch * args.warm)
     checkpoint_path = os.path.join(settings.CHECKPOINT_PATH, args.net, settings.TIME_NOW)
+    
+    # ------------------- print checkout
+    print("len(cifar100_training_loader): ", len(cifar100_training_loader))
+    print("len(cifar100_training_loader.dataset): ", len(cifar100_training_loader.dataset))
+    print("len(cifar100_test_loader): ", len(cifar100_test_loader))
+    print("len(cifar100_test_loader.dataset): ", len(cifar100_test_loader.dataset))
 
 
+    torch_cuda_active()  # recogonize if GPU is aviliable
 
     #use tensorboard
     if not os.path.exists(settings.LOG_DIR):
@@ -162,8 +215,7 @@ if __name__ == '__main__':
     writer = SummaryWriter(log_dir=os.path.join(
             settings.LOG_DIR, args.net, settings.TIME_NOW))
     input_tensor = torch.Tensor(1, 3, 32, 32)
-    if args.gpu:
-        input_tensor = input_tensor.cuda()
+    input_tensor = input_tensor.cuda()
     writer.add_graph(net, input_tensor)
 
     #create checkpoint folder to save model
@@ -173,14 +225,24 @@ if __name__ == '__main__':
 
     best_acc = 0.0
     
-
+    # 记录csv文件，给出标题
+    if args.enable_amp:
+        append_to_csv('Epoch', 'AMP_loss', csv_filename) 
+    else:
+        append_to_csv('Epoch', 'FP32_loss', csv_filename) 
+        
     train_start_time = time.time()
     # start training ---------------------------------------------------------------
     for epoch in range(1, settings.EPOCH + 1):
         if epoch > args.warm:
             train_scheduler.step(epoch)
 
-        train(epoch)
+        if args.enable_amp:
+            amp_train(epoch)
+        else:
+            fp32_train(epoch)
+        
+        
         acc = eval_training(epoch)
 
         #start to save best performance model after learning rate decay to 0.01
@@ -197,6 +259,7 @@ if __name__ == '__main__':
             torch.save(net.state_dict(), weights_path)
             
     train_end_time = time.time()
-    print('{} with {} epoch,\tTotal training time:{:.2f} min'.format(args.net, settings.EPOCH, (train_end_time - train_start_time)/60))
+    print('{} with {} epoch, enable-AMP {}, Total training time:{:.2f} min'.format(args.net, settings.EPOCH, args.enable_amp, (train_end_time - train_start_time)/60))
+    append_info_to_csv(round((train_end_time - train_start_time)/60, 2), csv_filename)
 
     writer.close()

@@ -1,0 +1,4 @@
+demo/**/__pycache__
+demo/data
+demo/checkpoint
+demo/runs

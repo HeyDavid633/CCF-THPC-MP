@@ -1,10 +1,11 @@
-# 2024.06.10 原始训练脚本 
-# 选择这个人的代码做为基础 因为包含了很多模型，而且加混合精度很方便
-# 
-# 1. 一个比较原始的训练脚本，至少实现基本的训练过程（输出精度等信息）
-# 2. 还需要绘制精度、曲线等信息
-#  
-import csv
+# train.py
+#!/usr/bin/env	python3
+
+""" train network using pytorch
+
+author baiyu
+"""
+
 import os
 import sys
 import argparse
@@ -17,7 +18,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
-from tqdm import tqdm
 
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -25,22 +25,12 @@ from torch.utils.tensorboard import SummaryWriter
 from conf import settings
 from utils import get_network, get_training_dataloader, get_test_dataloader, WarmUpLR, \
     most_recent_folder, most_recent_weights, last_epoch, best_acc_weights
-    
-    
-def append_to_csv(epoch, loss, filename):
-    """Append epoch and its corresponding loss to a CSV file."""
-    with open(filename, mode='a', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow([epoch, loss])
-
 
 def train(epoch):
-    
+
+    start = time.time()
     net.train()
-    
-    running_loss = 0.0
-    tqdm_bar = tqdm(cifar100_training_loader, desc=f'Training Epoch {epoch}', ncols=100)
-    for batch_index, (images, labels) in enumerate(tqdm_bar):
+    for batch_index, (images, labels) in enumerate(cifar100_training_loader):
 
         if args.gpu:
             labels = labels.cuda()
@@ -51,8 +41,6 @@ def train(epoch):
         loss = loss_function(outputs, labels)
         loss.backward()
         optimizer.step()
-        running_loss += loss.item()
-
 
         n_iter = (epoch - 1) * len(cifar100_training_loader) + batch_index + 1
 
@@ -63,11 +51,16 @@ def train(epoch):
             if 'bias' in name:
                 writer.add_scalar('LastLayerGradients/grad_norm2_bias', para.grad.norm(), n_iter)
 
+        print('Training Epoch: {epoch} [{trained_samples}/{total_samples}]\tLoss: {:0.4f}\tLR: {:0.6f}'.format(
+            loss.item(),
+            optimizer.param_groups[0]['lr'],
+            epoch=epoch,
+            trained_samples=batch_index * args.b + len(images),
+            total_samples=len(cifar100_training_loader.dataset)
+        ))
+
         #update training loss for each iteration
         writer.add_scalar('Train/loss', loss.item(), n_iter)
-        
-        postfix = {'Loss': f"{running_loss / (batch_index + 1):.4f}", 'LR': f"{optimizer.param_groups[0]['lr']:.4f}"}
-        tqdm_bar.set_postfix(**postfix)
 
         if epoch <= args.warm:
             warmup_scheduler.step()
@@ -77,9 +70,10 @@ def train(epoch):
         attr = attr[1:]
         writer.add_histogram("{}/{}".format(layer, attr), param, epoch)
 
-    append_to_csv(epoch, running_loss / len(cifar100_training_loader), 'fp32_epoch_loss.csv')    
-    
-    
+    finish = time.time()
+
+    print('epoch {} training time consumed: {:.2f}s'.format(epoch, finish - start))
+
 @torch.no_grad()
 def eval_training(epoch=0, tb=True):
 
@@ -103,19 +97,17 @@ def eval_training(epoch=0, tb=True):
         correct += preds.eq(labels).sum()
 
     finish = time.time()
-    # if args.gpu:
-    #     print('GPU INFO.....')
-    #     print(torch.cuda.memory_summary(), end='')
-    
-    if epoch % 5 == 0:
-        print('Evaluating Network.....')
-        print('Test set: Epoch: {}, Average loss: {:.4f}, Accuracy: {:.4f}, Time consumed:{:.2f}s \n'.format(
-            epoch,
-            test_loss / len(cifar100_test_loader.dataset),
-            correct.float() / len(cifar100_test_loader.dataset),
-            finish - start
-        ))
-    
+    if args.gpu:
+        print('GPU INFO.....')
+        print(torch.cuda.memory_summary(), end='')
+    print('Evaluating Network.....')
+    print('Test set: Epoch: {}, Average loss: {:.4f}, Accuracy: {:.4f}, Time consumed:{:.2f}s'.format(
+        epoch,
+        test_loss / len(cifar100_test_loader.dataset),
+        correct.float() / len(cifar100_test_loader.dataset),
+        finish - start
+    ))
+    print()
 
     #add informations to tensorboard
     if tb:
@@ -124,15 +116,15 @@ def eval_training(epoch=0, tb=True):
 
     return correct.float() / len(cifar100_test_loader.dataset)
 
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-net', type=str, required=True, help='net type')
     parser.add_argument('-gpu', action='store_true', default=False, help='use gpu or not')
-    parser.add_argument('-batch_size', type=int, default=128, help='batch size for dataloader')
+    parser.add_argument('-b', type=int, default=128, help='batch size for dataloader')
     parser.add_argument('-warm', type=int, default=1, help='warm up training phase')
     parser.add_argument('-lr', type=float, default=0.1, help='initial learning rate')
+    parser.add_argument('-resume', action='store_true', default=False, help='resume training')
     args = parser.parse_args()
 
     net = get_network(args)
@@ -142,7 +134,7 @@ if __name__ == '__main__':
         settings.CIFAR100_TRAIN_MEAN,
         settings.CIFAR100_TRAIN_STD,
         num_workers=4,
-        batch_size=args.batch_size,
+        batch_size=args.b,
         shuffle=True
     )
 
@@ -150,7 +142,7 @@ if __name__ == '__main__':
         settings.CIFAR100_TRAIN_MEAN,
         settings.CIFAR100_TRAIN_STD,
         num_workers=4,
-        batch_size=args.batch_size,
+        batch_size=args.b,
         shuffle=True
     )
 
@@ -159,9 +151,16 @@ if __name__ == '__main__':
     train_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=settings.MILESTONES, gamma=0.2) #learning rate decay
     iter_per_epoch = len(cifar100_training_loader)
     warmup_scheduler = WarmUpLR(optimizer, iter_per_epoch * args.warm)
-    checkpoint_path = os.path.join(settings.CHECKPOINT_PATH, args.net, settings.TIME_NOW)
 
+    if args.resume:
+        recent_folder = most_recent_folder(os.path.join(settings.CHECKPOINT_PATH, args.net), fmt=settings.DATE_FORMAT)
+        if not recent_folder:
+            raise Exception('no recent folder were found')
 
+        checkpoint_path = os.path.join(settings.CHECKPOINT_PATH, args.net, recent_folder)
+
+    else:
+        checkpoint_path = os.path.join(settings.CHECKPOINT_PATH, args.net, settings.TIME_NOW)
 
     #use tensorboard
     if not os.path.exists(settings.LOG_DIR):
@@ -182,15 +181,33 @@ if __name__ == '__main__':
     checkpoint_path = os.path.join(checkpoint_path, '{net}-{epoch}-{type}.pth')
 
     best_acc = 0.0
-    
-    # 记录csv文件，给出标题
-    append_to_csv('Epoch', 'FP32_loss', 'fp32_epoch_loss.csv') 
-    
-    train_start_time = time.time()
-    # start training ---------------------------------------------------------------
+    if args.resume:
+        best_weights = best_acc_weights(os.path.join(settings.CHECKPOINT_PATH, args.net, recent_folder))
+        if best_weights:
+            weights_path = os.path.join(settings.CHECKPOINT_PATH, args.net, recent_folder, best_weights)
+            print('found best acc weights file:{}'.format(weights_path))
+            print('load best training file to test acc...')
+            net.load_state_dict(torch.load(weights_path))
+            best_acc = eval_training(tb=False)
+            print('best acc is {:0.2f}'.format(best_acc))
+
+        recent_weights_file = most_recent_weights(os.path.join(settings.CHECKPOINT_PATH, args.net, recent_folder))
+        if not recent_weights_file:
+            raise Exception('no recent weights file were found')
+        weights_path = os.path.join(settings.CHECKPOINT_PATH, args.net, recent_folder, recent_weights_file)
+        print('loading weights file {} to resume training.....'.format(weights_path))
+        net.load_state_dict(torch.load(weights_path))
+
+        resume_epoch = last_epoch(os.path.join(settings.CHECKPOINT_PATH, args.net, recent_folder))
+
+
     for epoch in range(1, settings.EPOCH + 1):
         if epoch > args.warm:
             train_scheduler.step(epoch)
+
+        if args.resume:
+            if epoch <= resume_epoch:
+                continue
 
         train(epoch)
         acc = eval_training(epoch)
@@ -207,8 +224,5 @@ if __name__ == '__main__':
             weights_path = checkpoint_path.format(net=args.net, epoch=epoch, type='regular')
             print('saving weights file to {}'.format(weights_path))
             torch.save(net.state_dict(), weights_path)
-            
-    train_end_time = time.time()
-    print('{} with {} epoch,\tTotal training time:{:.2f} min'.format(args.net, settings.EPOCH, (train_end_time - train_start_time)/60))
 
     writer.close()
