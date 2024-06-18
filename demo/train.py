@@ -2,8 +2,8 @@
 # 
 # 更改了 脚本的入口参数使得更便于我的测试
 # 
-# 自动混精 python train.py -net vgg16 -epoch 5 -enable_amp Ture 
-# FP32    python train.py -net vgg16 -epoch 5
+# 自动混精 python train.py -plat 4080 -net vgg16 -epoch 5 -enable_amp Ture 
+# FP32    python train.py -plat 4080 -net vgg16 -epoch 5
 
 import csv
 import os
@@ -184,6 +184,7 @@ def eval_training(epoch=0, tb=False):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('-plat', type=str, required=True, help='running platfrom')
     parser.add_argument('-net', type=str, required=True, help='net type')
     parser.add_argument('-epoch', type=int, default=5, help='epoch to train')
     parser.add_argument('-enable_amp', type=str, default=False, help='if use gpu')
@@ -196,9 +197,9 @@ if __name__ == '__main__':
     settings.EPOCH = args.epoch
     
     if args.enable_amp:
-        log_name_info = 'log/' + args.net + '_amp_' + str(args.epoch) + '_'
+        log_name_info = 'log_' + args.plat + '/' + args.net + '_amp_' + str(args.epoch) + '_'
     else:
-        log_name_info = 'log/' + args.net + '_fp32_' + str(args.epoch) + '_'
+        log_name_info = 'log_' + args.plat + '/' + args.net + '_fp32_' + str(args.epoch) + '_'
     csv_filename = log_name_info + csv_filename 
     delta_csv_filename = log_name_info + delta_csv_filename 
     

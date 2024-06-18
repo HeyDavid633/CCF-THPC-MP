@@ -9,7 +9,6 @@ import csv
 
 def plot_losses_from_csvs(platfrom, net):
     
-    
     fp32_filename='../log/' + net +'_fp32_100_loss.csv'
     amp_filename='../log/' + net + '_amp_100_loss.csv'
     epochs, fp32_losses, amp_losses = [], [], []
