@@ -30,7 +30,6 @@ from utils import get_network, get_training_dataloader, get_test_dataloader, War
     
 scaler = GradScaler(enabled=True)
 csv_filename = 'loss.csv'
-delta_csv_filename = 'delta_loss.csv'
         
     
 def append_info_to_csv(info_data, filename):
@@ -43,16 +42,11 @@ def append_to_csv(epoch, loss, filename):
         writer = csv.writer(csvfile)
         writer.writerow([epoch, loss])
 
-def append_list_to_csv(data_list, filename):
-    with open(filename, mode='a', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(data_list)
 
 
 def amp_train(epoch):
     
     net.train()
-    batch_losses_diff = []  # 新增列表用于记录每个batch损失的增量
     
     running_loss = 0.0
     tqdm_bar = tqdm(cifar100_training_loader, desc=f'Training Epoch {epoch}', ncols=100)
@@ -62,6 +56,7 @@ def amp_train(epoch):
             labels = labels.cuda()
             images = images.cuda()
 
+        #适用于 AMP 的训练
         optimizer.zero_grad(set_to_none=True)
         with autocast():
             outputs = net(images)
@@ -71,23 +66,11 @@ def amp_train(epoch):
         scaler.update()  # Updates the scale for next iteration.
         running_loss += loss.item()
         
-        if batch_index == 0:
-            batch_losses_diff.append(0)
-        else:
-            diff = (running_loss / (batch_index + 1)) - (running_loss / batch_index)
-            batch_losses_diff.append(diff)
-        
-        
         postfix = {'Loss': f"{running_loss / (batch_index + 1):.4f}", 'LR': f"{optimizer.param_groups[0]['lr']:.4f}"}
         tqdm_bar.set_postfix(**postfix)
         
         if epoch <= args.warm:
             warmup_scheduler.step()
-            
-            
-    epoch_losses_diff = [f"{diff:.4f}" for diff in batch_losses_diff]  
-    epoch_info = [epoch] + epoch_losses_diff
-    append_list_to_csv(epoch_info, delta_csv_filename) 
 
     append_to_csv(epoch, running_loss / len(cifar100_training_loader), csv_filename)    
         
@@ -95,7 +78,6 @@ def amp_train(epoch):
 def fp32_train(epoch):
     
     net.train()
-    batch_losses_diff = []  # 新增列表用于记录每个batch损失的增量
 
     running_loss = 0.0
     tqdm_bar = tqdm(cifar100_training_loader, desc=f'Training Epoch {epoch}', ncols=100) 
@@ -105,30 +87,21 @@ def fp32_train(epoch):
             labels = labels.cuda()
             images = images.cuda()
 
-        optimizer.zero_grad() 
-        outputs = net(images) 
-        loss = loss_function(outputs, labels) 
-        loss.backward() 
-        optimizer.step() 
-        running_loss += loss.item() 
-        
-        if batch_index == 0:
-            batch_losses_diff.append(0)
-        else:
-            diff = (running_loss / (batch_index + 1)) - (running_loss / batch_index)
-            batch_losses_diff.append(diff)
+        optimizer.zero_grad() # 清零梯度以免累积
+        outputs = net(images) # 前向传播 得到预测输出
+        loss = loss_function(outputs, labels) # 计算预测输出与真实标签之间的损失
+        loss.backward() # 反向 计算梯度
+        optimizer.step() # 根据梯度更新模型参数
+        running_loss += loss.item() # 累计当前batch的loss到running_loss
         
         postfix = {'Loss': f"{running_loss / (batch_index + 1):.4f}", 'LR': f"{optimizer.param_groups[0]['lr']:.4f}"}
         tqdm_bar.set_postfix(**postfix)
 
+        # 学习率预热 --- 为了训练稳定高效
         if epoch <= args.warm:
             warmup_scheduler.step()
-            
-            
-    epoch_losses_diff = [f"{diff:.4f}" for diff in batch_losses_diff]  # 转换为字符串以便写入CSV
-    epoch_info = [epoch] + epoch_losses_diff
-    append_list_to_csv(epoch_info, delta_csv_filename) 
 
+    #写入本次epoch的 loss值
     append_to_csv(epoch, running_loss / len(cifar100_training_loader), csv_filename)   
     
     
@@ -194,13 +167,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
     net = get_network(args)
     settings.EPOCH = args.epoch
-    
     if args.enable_amp:
-        log_name_info = 'log/' + args.net + '_amp_' + str(args.epoch) + '_'
+        csv_filename = 'log/' + args.net + '_amp_' + str(args.epoch) + '_' + csv_filename    
     else:
-        log_name_info = 'log/' + args.net + '_fp32_' + str(args.epoch) + '_'
-    csv_filename = log_name_info + csv_filename 
-    delta_csv_filename = log_name_info + delta_csv_filename 
+        csv_filename = 'log/' + args.net + '_fp32_' + str(args.epoch) + '_' + csv_filename
+    
     
     #data preprocessing:
     cifar100_training_loader = get_training_dataloader(
@@ -226,6 +197,12 @@ if __name__ == '__main__':
     warmup_scheduler = WarmUpLR(optimizer, iter_per_epoch * args.warm)
     checkpoint_path = os.path.join(settings.CHECKPOINT_PATH, args.net, settings.TIME_NOW)
     
+    # ------------------- print checkout
+    print("len(cifar100_training_loader): ", len(cifar100_training_loader))
+    print("len(cifar100_training_loader.dataset): ", len(cifar100_training_loader.dataset))
+    print("len(cifar100_test_loader): ", len(cifar100_test_loader))
+    print("len(cifar100_test_loader.dataset): ", len(cifar100_test_loader.dataset))
+
 
     torch_cuda_active()  # recogonize if GPU is aviliable
 
