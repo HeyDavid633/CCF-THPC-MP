@@ -19,8 +19,11 @@ from torch.utils.data import DataLoader
 def get_network(args):
     """ return given network
     """
-
-    if args.net == 'vgg16':
+    if args.net == 'alexnet':   # my addition
+        from models.alexnet import alexnet
+        net = alexnet()
+        
+    elif args.net == 'vgg16':
         from models.vgg import vgg16_bn
         net = vgg16_bn()
     elif args.net == 'vgg13':

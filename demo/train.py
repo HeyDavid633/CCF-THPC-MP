@@ -174,9 +174,9 @@ def eval_training(epoch=0, tb=False):
         
 
     #add informations to tensorboard
-    if tb:
-        writer.add_scalar('Test/Average loss', test_loss / len(cifar100_test_loader.dataset), epoch)
-        writer.add_scalar('Test/Accuracy', correct.float() / len(cifar100_test_loader.dataset), epoch)
+    # if tb:
+    #     writer.add_scalar('Test/Average loss', test_loss / len(cifar100_test_loader.dataset), epoch)
+    #     writer.add_scalar('Test/Accuracy', correct.float() / len(cifar100_test_loader.dataset), epoch)
 
     return correct.float() / len(cifar100_test_loader.dataset)
 
@@ -236,11 +236,10 @@ if __name__ == '__main__':
 
     #since tensorboard can't overwrite old values
     #so the only way is to create a new tensorboard log
-    writer = SummaryWriter(log_dir=os.path.join(
-            settings.LOG_DIR, args.net, settings.TIME_NOW))
+    # writer = SummaryWriter(log_dir=os.path.join(settings.LOG_DIR, args.net, settings.TIME_NOW))
     input_tensor = torch.Tensor(1, 3, 32, 32)
     input_tensor = input_tensor.cuda()
-    writer.add_graph(net, input_tensor)
+    # writer.add_graph(net, input_tensor)
 
     #create checkpoint folder to save model
     if not os.path.exists(checkpoint_path):
@@ -286,4 +285,4 @@ if __name__ == '__main__':
     print('{} with {} epoch, enable-AMP {}, Total training time:{:.2f} min'.format(args.net, settings.EPOCH, args.enable_amp, (train_end_time - train_start_time)/60))
     append_info_to_csv(round((train_end_time - train_start_time)/60, 2), csv_filename)
 
-    writer.close()
+    # writer.close()
