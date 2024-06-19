@@ -231,7 +231,7 @@ if __name__ == '__main__':
     operator_infos = alexnet_forward(x_example, conv_params_example, fc_params_example)
     total_finish_time = time.time()
     
-    now = datetime.now().strftime('%b_%d_%H_%M')
+    now = datetime.now().strftime('%b%d_%H_%M')
     filename = f"table1_{now}.csv"
     write_to_csv(operator_infos, filename)
     
