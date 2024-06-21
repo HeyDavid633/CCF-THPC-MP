@@ -1,0 +1,21 @@
+op_name,input_shape,exec_dtype,avg_exec_time
+conv2d-1,"torch.Size([64, 3, 224, 224])",torch.float32,0.08748054504394531
+relu-2,"torch.Size([64, 64, 55, 55])",torch.float32,0.020334720611572266
+max_pool2d-3,"torch.Size([64, 64, 55, 55])",torch.float32,0.02987504005432129
+conv2d-4,"torch.Size([64, 64, 27, 27])",torch.float32,0.05780816078186035
+relu-5,"torch.Size([64, 192, 27, 27])",torch.float32,0.01962900161743164
+max_pool2d-6,"torch.Size([64, 192, 27, 27])",torch.float32,0.029388070106506348
+conv2d-7,"torch.Size([64, 192, 13, 13])",torch.float32,1.1817485094070435
+relu-8,"torch.Size([64, 384, 13, 13])",torch.float32,0.16039669513702393
+conv2d-9,"torch.Size([64, 384, 13, 13])",torch.float32,0.4154658317565918
+relu-10,"torch.Size([64, 256, 13, 13])",torch.float32,0.1052314043045044
+conv2d-11,"torch.Size([64, 256, 13, 13])",torch.float32,0.16209900379180908
+relu-12,"torch.Size([64, 256, 13, 13])",torch.float32,0.17223238945007324
+max_pool2d-13,"torch.Size([64, 256, 13, 13])",torch.float32,0.036438703536987305
+linear-14,"torch.Size([64, 9216])",torch.float32,0.053817033767700195
+relu-15,"torch.Size([64, 4096])",torch.float32,0.030719637870788574
+dropout-16,"torch.Size([64, 4096])",torch.float32,0.03550231456756592
+linear-17,"torch.Size([64, 4096])",torch.float32,0.15058815479278564
+relu-18,"torch.Size([64, 4096])",torch.float32,0.028836727142333984
+dropout-19,"torch.Size([64, 4096])",torch.float32,0.033768415451049805
+linear-20,"torch.Size([64, 4096])",torch.float32,0.03657519817352295

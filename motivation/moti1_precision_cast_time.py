@@ -5,13 +5,13 @@
 # python moti1_precision_cast_time.py FP16   fp32转换到fp16的时间 + fp16执行时间
 # python moti1_precision_cast_time.py FP32   fp16转换到fp32的时间 + fp32执行时间
 import sys
-import time
+import timeit
+# import time
 import torch
 import torch.nn.functional as F
 from datetime import datetime
 import csv
-import torch.cuda as cuda
-from utils import torch_cuda_active  
+from utils import torch_cuda_active   
 
 class OperatorInfo:
     def __init__(self, name, input_shape, dtype):
@@ -80,148 +80,170 @@ def alexnet_forward(x, conv_params, fc_params, use_relu=True):
     
     for _ in range(exec_times):
         
+        
         x = torch.randn(64, 3, 224, 224, device=device, dtype=data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.conv2d(x, conv_params[0][0], bias=conv_params[0][1], stride=4, padding=2)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[0].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.relu(x)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[1].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.max_pool2d(x, kernel_size=3, stride=2)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[2].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.conv2d(x, conv_params[1][0], bias=conv_params[1][1], padding=2)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[3].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.relu(x)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[4].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.max_pool2d(x, kernel_size=3, stride=2)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[5].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.conv2d(x, conv_params[2][0], bias=conv_params[2][1], padding=1)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[6].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.relu(x)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[7].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.conv2d(x, conv_params[3][0], bias=conv_params[3][1], padding=1)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[8].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.relu(x)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[9].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.conv2d(x, conv_params[4][0], bias=conv_params[4][1], padding=1)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[10].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.relu(x)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[11].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.max_pool2d(x, kernel_size=3, stride=2)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[12].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
         x = x.view(x.size(0), -1)
+        torch.cuda.synchronize()
         
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.linear(x, fc_params[0][0], bias=fc_params[0][1])
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[13].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.relu(x)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[14].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.dropout(x, training=True) 
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[15].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.linear(x, fc_params[1][0], bias=fc_params[1][1])
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[16].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.relu(x)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[17].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.dropout(x, training=True)
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[18].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
-        start_time = time.time()
+        start_time = timeit.default_timer()
         x = x.to(data_type)
         x = F.linear(x, fc_params[2][0], bias=fc_params[2][1])
-        elapsed_time = time.time() - start_time
+        torch.cuda.synchronize()
+        elapsed_time = timeit.default_timer() - start_time
         operator_infos[19].total_time += elapsed_time
         x = x.to(data_type_reverse)
         
@@ -265,12 +287,12 @@ if __name__ == '__main__':
     ]
 
 
-    total_start_time = time.time()
+    total_start_time = timeit.default_timer()
     operator_infos = alexnet_forward(x_example, conv_params_example, fc_params_example)
-    total_finish_time = time.time()
+    total_finish_time = timeit.default_timer()
     
-    now = datetime.now().strftime('cast_%b%d_%H_%M')
-    filename = f"table1_{now}.csv"
+    now = datetime.now().strftime('cast_%b%d_%H_%M_%S')
+    filename = f"table1_{sys.argv[1]}_{now}.csv"
     write_to_csv(operator_infos, filename)
     
     print(f"Running {exec_times} times Cost: {total_finish_time - total_start_time:.2f} seconds, using {data_type}")
