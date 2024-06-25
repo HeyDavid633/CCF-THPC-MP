@@ -12,7 +12,7 @@ from utils import torch_cuda_active
 # cuda / cpu
 device = torch_cuda_active()
 
-x0 = torch.randn(64, 3, 224, 224, device = device, dtype = torch.float16)
+x0 = torch.randn(64, 3, 224, 224, device = device, dtype = torch.float32)
 weight1 = torch.randn(64, 3, 11, 11, device = device, dtype = torch.float16)
 bias1 = torch.randn(64, device = device, dtype = torch.float16)
 print("x0 type: ", x0.dtype, "\tdevice: ", x0.device )
@@ -24,9 +24,12 @@ print("x0 type: ", x0.dtype, "\tdevice: ", x0.device )
 # 类式接口 可以更细致的操作，才能支持训练
 # 不需要手动传入weight与bias, 但需要指明in_channels与out_channels
 # x0是FP16 那么类定义里面也必须写 dtype=torch.half 以指定weight和bias的精度，否则就默认FP32
-layer1 = nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=2, device=device, dtype=torch.half)
+# layer1 = nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=2, device=device, dtype=torch.half)
+layer1 = nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=2, device=device)
 x1 = layer1(x0)
 print("x1 type: ", x1.dtype, "\tdevice: ", x1.device )
+
+x1 = x1.to(torch.float16)
 
 x2 = F.relu(x1)
 print("x2 type: ", x2.dtype, "\tdevice: ", x2.device )

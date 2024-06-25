@@ -3,3 +3,7 @@ demo/data
 demo/checkpoint
 demo/runs
 demo/tb_log
+data
+checkpoint
+runs
+**/__pycache__

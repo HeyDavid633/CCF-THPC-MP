@@ -114,7 +114,6 @@ class AlexNet_flaten(nn.Module):
         x = self.relu5(self.conv5(x))
         x = self.pool3(x)
         
-        # 调整形状以便进入全连接层
         x = x.view(x.size(0), -1)
         
         x = self.dropout1(x)
