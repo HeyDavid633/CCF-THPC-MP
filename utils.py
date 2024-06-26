@@ -27,16 +27,26 @@ def get_network(args):
     elif args.net == 'vgg16':
         from models.vgg import vgg16_bn
         net = vgg16_bn()
-    elif args.net == 'vgg13':
-        from models.vgg import vgg13_bn
-        net = vgg13_bn()
     elif args.net == 'vgg11':
         from models.vgg import vgg11_bn
         net = vgg11_bn()
-    elif args.net == 'vgg19':
-        from models.vgg import vgg19_bn
-        net = vgg19_bn()
         
+    #resnet50 -------------------------
+    elif args.net == 'resnet50':
+        from models.resnet import resnet50
+        net = resnet50()
+        
+    # inceptionv3 --------------------
+    elif args.net == 'inceptionv3':
+        from models.inceptionv3 import inceptionv3
+        net = inceptionv3()
+
+    # shuffleNet --------------------
+    elif args.net == 'shufflenet':
+        from models.shufflenet import shufflenet
+        net = shufflenet()
+
+
         
     else:
         print('the network name you have entered is not supported yet')

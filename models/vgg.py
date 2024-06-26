@@ -77,34 +77,41 @@ def make_layers(cfg, batch_norm=False):
 
 
 class VGG11(nn.Module):
-
     def __init__(self, num_classes=1000):
         super(VGG11, self).__init__()
         
-        self.conv1_1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
-        self.relu1_1 = nn.ReLU(inplace=True)
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu1 = nn.ReLU(inplace=True)
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
         
-        self.conv2_1 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-        self.relu2_1 = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(128)
+        self.relu2 = nn.ReLU(inplace=True)
         self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
         
-        self.conv3_1 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
-        self.relu3_1 = nn.ReLU(inplace=True)
-        self.conv3_2 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
-        self.relu3_2 = nn.ReLU(inplace=True)
+        self.conv3 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
+        self.bn3 = nn.BatchNorm2d(256)
+        self.relu3 = nn.ReLU(inplace=True)
+        self.conv4 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
+        self.bn4 = nn.BatchNorm2d(256)
+        self.relu4 = nn.ReLU(inplace=True)
         self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
         
-        self.conv4_1 = nn.Conv2d(256, 512, kernel_size=3, padding=1)
-        self.relu4_1 = nn.ReLU(inplace=True)
-        self.conv4_2 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
-        self.relu4_2 = nn.ReLU(inplace=True)
+        self.conv5 = nn.Conv2d(256, 512, kernel_size=3, padding=1)
+        self.bn5 = nn.BatchNorm2d(512)
+        self.relu5 = nn.ReLU(inplace=True)
+        self.conv6 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.bn6 = nn.BatchNorm2d(512)
+        self.relu6 = nn.ReLU(inplace=True)
         self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
         
-        self.conv5_1 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
-        self.relu5_1 = nn.ReLU(inplace=True)
-        self.conv5_2 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
-        self.relu5_2 = nn.ReLU(inplace=True)
+        self.conv7 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.bn7 = nn.BatchNorm2d(512)
+        self.relu7 = nn.ReLU(inplace=True)
+        self.conv8 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.bn8 = nn.BatchNorm2d(512)
+        self.relu8 = nn.ReLU(inplace=True)
         self.pool5 = nn.MaxPool2d(kernel_size=2, stride=2)
         
         self.fc1 = nn.Linear(512, 4096)
@@ -117,22 +124,22 @@ class VGG11(nn.Module):
         self.fc3 = nn.Linear(4096, num_classes)
         
     def forward(self, x):
-        x = self.relu1_1(self.conv1_1(x))
+        x = self.relu1(self.bn1(self.conv1(x)))
         x = self.pool1(x)
         
-        x = self.relu2_1(self.conv2_1(x))
+        x = self.relu2(self.bn2(self.conv2(x)))
         x = self.pool2(x)
         
-        x = self.relu3_1(self.conv3_1(x))
-        x = self.relu3_2(self.conv3_2(x))
+        x = self.relu3(self.bn3(self.conv3(x)))
+        x = self.relu4(self.bn4(self.conv4(x)))
         x = self.pool3(x)
         
-        x = self.relu4_1(self.conv4_1(x))
-        x = self.relu4_2(self.conv4_2(x))
+        x = self.relu5(self.bn5(self.conv5(x)))
+        x = self.relu6(self.bn6(self.conv6(x)))
         x = self.pool4(x)
         
-        x = self.relu5_1(self.conv5_1(x))
-        x = self.relu5_2(self.conv5_2(x))
+        x = self.relu7(self.bn7(self.conv7(x)))
+        x = self.relu8(self.bn8(self.conv8(x)))
         x = self.pool5(x)
         
         x = x.view(x.size(0), -1)
@@ -144,49 +151,65 @@ class VGG11(nn.Module):
         return x
     
     def forward_with_print(self, x):
-        x = self.conv1_1(x)
+        x = self.conv1(x)
         print("\nOutput from Conv1_1: ", x.dtype)
-        x = self.relu1_1(x)
+        x = self.bn1(x)
+        print("Output from BatchNorm1: ", x.dtype)
+        x = self.relu1(x)
         print("Output from ReLU1_1: ", x.dtype)
         x = self.pool1(x)
         print("Output from Pool1: ", x.dtype)
         
-        x = self.conv2_1(x)
+        x = self.conv2(x)
         print("Output from Conv2_1: ", x.dtype)
-        x = self.relu2_1(x)
+        x = self.bn2(x)
+        print("Output from BatchNorm2: ", x.dtype)
+        x = self.relu2(x)
         print("Output from ReLU2_1: ", x.dtype)
         x = self.pool2(x)
         print("Output from Pool2: ", x.dtype)
         
-        x = self.conv3_1(x)
+        x = self.conv3(x)
         print("Output from Conv3_1: ", x.dtype)
-        x = self.relu3_1(x)
+        x = self.bn3(x)
+        print("Output from BatchNorm3: ", x.dtype)
+        x = self.relu3(x)
         print("Output from ReLU3_1: ", x.dtype)
-        x = self.conv3_2(x)
+        x = self.conv4(x)
         print("Output from Conv3_2: ", x.dtype)
-        x = self.relu3_2(x)
+        x = self.bn4(x)
+        print("Output from BatchNorm4: ", x.dtype)
+        x = self.relu4(x)
         print("Output from ReLU3_2: ", x.dtype)
         x = self.pool3(x)
         print("Output from Pool3: ", x.dtype)
         
-        x = self.conv4_1(x)
+        x = self.conv5(x)
         print("Output from Conv14_1: ", x.dtype)
-        x = self.relu4_1(x)
+        x = self.bn5(x)
+        print("Output from BatchNorm5: ", x.dtype)
+        x = self.relu5(x)
         print("Output from ReLU4_1: ", x.dtype)
-        x = self.conv4_2(x)
+        x = self.conv6(x)
         print("Output from Conv4_2: ", x.dtype)
-        x = self.relu4_2(x)
+        x = self.bn6(x)
+        print("Output from BatchNorm6: ", x.dtype)
+        x = self.relu6(x)
         print("Output from ReLU4_2: ", x.dtype)
         x = self.pool4(x)
         print("Output from Pool4: ", x.dtype)
         
-        x = self.conv5_1(x)
+        x = self.conv7(x)
         print("Output from Conv5_1: ", x.dtype)
-        x = self.relu5_1(x)
+        x = self.bn7(x)
+        print("Output from BatchNorm7: ", x.dtype)
+        x = self.relu7(x)
         print("Output from ReLU5_1: ", x.dtype)
-        x = self.conv5_2(x)
+        x = self.conv7(x)
         print("Output from Conv5_2: ", x.dtype)
-        x = self.relu5_2(x)
+        x = self.bn8(x)
+        print("Output from BatchNorm8: ", x.dtype)
+        x = self.relu8(x)
         print("Output from ReLU5_2: ", x.dtype)
         x = self.pool5(x)
         print("Output from Pool5: ", x.dtype)
@@ -215,18 +238,173 @@ class VGG11(nn.Module):
         return x
         
 
+class VGG16(nn.Module):
+    def __init__(self, num_classes=1000):
+        super(VGG16, self).__init__()
+        
+        self.conv1_1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
+        self.bn1_1 = nn.BatchNorm2d(64)
+        self.relu1_1 = nn.ReLU(inplace=True)
+        self.conv1_2 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
+        self.bn1_2 = nn.BatchNorm2d(64)
+        self.relu1_2 = nn.ReLU(inplace=True)
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        self.conv2_1 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.bn2_1 = nn.BatchNorm2d(128)
+        self.relu2_1 = nn.ReLU(inplace=True)
+        self.conv2_2 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        self.bn2_2 = nn.BatchNorm2d(128)
+        self.relu2_2 = nn.ReLU(inplace=True)
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        self.conv3_1 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
+        self.bn3_1 = nn.BatchNorm2d(256)
+        self.relu3_1 = nn.ReLU(inplace=True)
+        self.conv3_2 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
+        self.bn3_2 = nn.BatchNorm2d(256)
+        self.relu3_2 = nn.ReLU(inplace=True)
+        self.conv3_3 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
+        self.bn3_3 = nn.BatchNorm2d(256)
+        self.relu3_3 = nn.ReLU(inplace=True)
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        self.conv4_1 = nn.Conv2d(256, 512, kernel_size=3, padding=1)
+        self.bn4_1 = nn.BatchNorm2d(512)
+        self.relu4_1 = nn.ReLU(inplace=True)
+        self.conv4_2 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.bn4_2 = nn.BatchNorm2d(512)
+        self.relu4_2 = nn.ReLU(inplace=True)
+        self.conv4_3 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.bn4_3 = nn.BatchNorm2d(512)
+        self.relu4_3 = nn.ReLU(inplace=True)
+        self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        self.conv5_1 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.bn5_1 = nn.BatchNorm2d(512)
+        self.relu5_1 = nn.ReLU(inplace=True)
+        self.conv5_2 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.bn5_2 = nn.BatchNorm2d(512)
+        self.relu5_2 = nn.ReLU(inplace=True)
+        self.conv5_3 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.bn5_3 = nn.BatchNorm2d(512)
+        self.relu5_3 = nn.ReLU(inplace=True)
+        self.pool5 = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        
+        self.fc1 = nn.Linear(512, 4096)
+        # self.fc1 = nn.Linear(512 * 7 * 7, 4096)  # 注意调整输入维度以匹配特征图尺寸
+        self.relu_fc1 = nn.ReLU(inplace=True)
+        self.dropout1 = nn.Dropout()
+        self.fc2 = nn.Linear(4096, 4096)
+        self.relu_fc2 = nn.ReLU(inplace=True)
+        self.dropout2 = nn.Dropout()
+        self.fc3 = nn.Linear(4096, num_classes)
+        
+    def forward(self, x):
+        x = self.relu1_1(self.bn1_1(self.conv1_1(x)))
+        x = self.relu1_2(self.bn1_2(self.conv1_2(x)))
+        x = self.pool1(x)
+        
+        x = self.relu2_1(self.bn2_1(self.conv2_1(x)))
+        x = self.relu2_2(self.bn2_2(self.conv2_2(x)))
+        x = self.pool2(x)
+        
+        x = self.relu3_1(self.bn3_1(self.conv3_1(x)))
+        x = self.relu3_2(self.bn3_2(self.conv3_2(x)))
+        x = self.relu3_3(self.bn3_3(self.conv3_3(x)))
+        x = self.pool3(x)
+        
+        x = self.relu4_1(self.bn4_1(self.conv4_1(x)))
+        x = self.relu4_2(self.bn4_2(self.conv4_2(x)))
+        x = self.relu4_3(self.bn4_3(self.conv4_3(x)))
+        x = self.pool4(x)
+        
+        x = self.relu5_1(self.bn5_1(self.conv5_1(x)))
+        x = self.relu5_2(self.bn5_2(self.conv5_2(x)))
+        x = self.relu5_3(self.bn5_3(self.conv5_3(x)))
+        x = self.pool5(x)
+        
+        x = x.view(x.size(0), -1)
+        x = self.relu_fc1(self.fc1(x))
+        x = self.dropout1(x)
+        x = self.relu_fc2(self.fc2(x))
+        x = self.dropout2(x)
+        x = self.fc3(x)
+        return x
+    
+    def forward_with_print(self, x):
+        x = self.relu1_1(self.bn1_1(self.conv1_1(x)))
+        print("Output from relu1_1: ", x.dtype)
+        x = self.relu1_2(self.bn1_2(self.conv1_2(x)))
+        print("Output from relu1_2: ", x.dtype)
+        x = self.pool1(x)
+        print("Output from pool1: ", x.dtype)
+        
+        x = self.relu2_1(self.bn2_1(self.conv2_1(x)))
+        print("Output from relu2_1: ", x.dtype)
+        x = self.relu2_2(self.bn2_2(self.conv2_2(x)))
+        print("Output from relu2_2: ", x.dtype)
+        x = self.pool2(x)
+        print("Output from pool2: ", x.dtype)
+        
+        x = self.relu3_1(self.bn3_1(self.conv3_1(x)))
+        print("Output from relu3_1: ", x.dtype)
+        x = self.relu3_2(self.bn3_2(self.conv3_2(x)))
+        print("Output from relu3_2: ", x.dtype)
+        x = self.relu3_3(self.bn3_3(self.conv3_3(x)))
+        print("Output from relu3_3: ", x.dtype)
+        x = self.pool3(x)
+        print("Output from pool3: ", x.dtype)
+        
+        x = self.relu4_1(self.bn4_1(self.conv4_1(x)))
+        print("Output from relu4_1: ", x.dtype)
+        x = self.relu4_2(self.bn4_2(self.conv4_2(x)))
+        print("Output from relu4_2: ", x.dtype)
+        x = self.relu4_3(self.bn4_3(self.conv4_3(x)))
+        print("Output from relu4_3: ", x.dtype)
+        x = self.pool4(x)
+        print("Output from pool4: ", x.dtype)
+        
+        x = self.relu5_1(self.bn5_1(self.conv5_1(x)))
+        print("Output from relu5_1: ", x.dtype)
+        x = self.relu5_2(self.bn5_2(self.conv5_2(x)))
+        print("Output from relu5_2: ", x.dtype)
+        x = self.relu5_3(self.bn5_3(self.conv5_3(x)))
+        print("Output from relu5_3: ", x.dtype)
+        x = self.pool5(x)
+        print("Output from pool5: ", x.dtype)
+
+        x = x.view(x.size(0), -1)
+        print("Output from View: ", x.dtype)
+        
+        x = self.fc1(x)
+        print("Output from FC1: ", x.dtype)
+        x = self.relu_fc1(x)
+        print("Output from ReLU_FC1: ", x.dtype)
+        x = self.dropout1(x)
+        print("Output from Dropout1: ", x.dtype)
+        
+        x = self.fc2(x)
+        print("Output from FC2: ", x.dtype)
+        x = self.relu_fc2(x)
+        print("Output from ReLU_FC2: ", x.dtype)
+        x = self.dropout2(x)
+        print("Output from Dropout2: ", x.dtype)
+        
+        x = self.fc3(x)
+        print("Output from FC3: ", x.dtype)
+            
+        
+        return x
+
 
 def vgg11_bn():
-    return VGG(make_layers(cfg['A'], batch_norm=True))
-    # return VGG11()
-
-def vgg13_bn():
-    return VGG(make_layers(cfg['B'], batch_norm=True))
+    # return VGG(make_layers(cfg['A'], batch_norm=True))
+    return VGG11()
 
 def vgg16_bn():
-    return VGG(make_layers(cfg['D'], batch_norm=True))
-
-def vgg19_bn():
-    return VGG(make_layers(cfg['E'], batch_norm=True))
+    # return VGG(make_layers(cfg['D'], batch_norm=True))
+    return VGG16()
 
 
