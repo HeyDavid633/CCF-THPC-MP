@@ -1,8 +1,8 @@
-# 2024.06.22 训练脚本
+# 2024.06.26 训练脚本
 #    
 # 相比于demo/train.py删除了checkpoint记录
 # 之后还需要换更多的数据集，目前只有 CIFAR100
-# 可以直接进行fp16的训练
+# 可以直接进行fp16的训练 但是需要手动管理梯度缩放scaler因子 效果不好
 # 
 # 目前该代码可以直接跑通 alexnet vgg11 vgg16 inceptionv3 shufflenet resnet50
 #
@@ -128,11 +128,15 @@ def fp32_train(epoch):
     each_epoch_time.append(epoch_elapsed_time)
     append_to_csv(epoch, running_loss / len(cifar100_training_loader), csv_filename)   
 
-def fp16_train(epoch):
+# 对于纯fp16训练，不能使用 GradScaler，需要手动管理精度进行缩放
+def fp16_train(epoch, initial_scale=2**6):
+    
     net.train()
+    scaler = initial_scale  # 初始化缩放因子
     running_loss = 0.0
     tqdm_bar = tqdm(cifar100_training_loader, desc=f'Training Epoch {epoch}', ncols=100)
     
+    first_batch = True
     epoch_start_time = timeit.default_timer()
     
     for batch_index, (images, labels) in enumerate(tqdm_bar):
@@ -141,12 +145,23 @@ def fp16_train(epoch):
             labels = labels.cuda()
             images = images.half().cuda()
 
-        optimizer.zero_grad() 
-        outputs = net(images)                 # 前向传播 得到预测输出
-        loss = loss_function(outputs, labels) # 计算预测输出与真实标签之间的损失
-        loss.backward()                       # 反向传播
-        optimizer.step()                      # 根据梯度更新模型参数
-        running_loss += loss.item()           # 累计当前batch的loss到running_loss
+        optimizer.zero_grad(set_to_none=True)
+        outputs = net(images)
+        scaled_loss = loss_function(outputs, labels) * scaler
+        scaled_loss.backward()  # 反向传播计算缩放后的梯度
+        
+        # 逆缩放梯度 unscale
+        for param in net.parameters():
+            if param.grad is not None:
+                param.grad.data = param.grad.data / scaler  # 除以缩放因子
+        
+        optimizer.step() # 根据逆缩放后的梯度 更新模型参数
+        running_loss += scaled_loss.item() # 累计当前batch的loss到running_loss
+        
+        if any(torch.isinf(param.grad).any() or torch.isnan(param.grad).any() for param in net.parameters() if param.grad is not None):
+            print("Detected inf or nan in gradients, adjusting scaling factor...")
+            scaler /= 2  # 如果发现不稳定，减小缩放因子
+            continue  # 跳过这次更新，重新开始下一轮迭代
         
         postfix = {'Loss': f"{running_loss / (batch_index + 1):.4f}", 'LR': f"{optimizer.param_groups[0]['lr']:.4f}"}
         tqdm_bar.set_postfix(**postfix)
@@ -159,47 +174,6 @@ def fp16_train(epoch):
     each_epoch_time.append(epoch_elapsed_time)
     append_to_csv(epoch, running_loss / len(cifar100_training_loader), csv_filename)        
     
-def emp_train(epoch, policy = ''):
-    
-    net.train()
-    
-    running_loss = 0.0
-    tqdm_bar = tqdm(cifar100_training_loader, desc=f'Training Epoch {epoch}', ncols=100)
-    
-    first_batch = True
-    epoch_start_time = timeit.default_timer()
-    
-    for batch_index, (images, labels) in enumerate(tqdm_bar):
-
-        if args.gpu:
-            labels = labels.cuda()
-            images = images.cuda()
-
-        #适用于 AMP 的训练
-        optimizer.zero_grad(set_to_none=True)
-        
-        if first_batch and epoch == 1:
-            outputs = net.forward_with_print(images)
-            loss = loss_function(outputs, labels)
-            first_batch = False
-        else:
-            outputs = net.forward(images)
-            loss = loss_function(outputs, labels)
-            
-        loss.backward()                       # 反向传播
-        optimizer.step()                      # 根据梯度更新模型参数
-        running_loss += loss.item()           # 累计当前batch的loss到running_loss
-        
-        postfix = {'Loss': f"{running_loss / (batch_index + 1):.4f}", 'LR': f"{optimizer.param_groups[0]['lr']:.4f}"}
-        tqdm_bar.set_postfix(**postfix)
-        
-        if epoch <= args.warm:
-            warmup_scheduler.step()
-            
-    torch.cuda.synchronize()
-    epoch_elapsed_time = timeit.default_timer() - epoch_start_time
-    each_epoch_time.append(epoch_elapsed_time)
-    append_to_csv(epoch, running_loss / len(cifar100_training_loader), csv_filename)   
 
     
 @torch.no_grad()
@@ -308,8 +282,14 @@ if __name__ == '__main__':
     summary(net, (3, 32, 32))  
     best_acc = 0.0
     
-    append_to_csv('Epoch', f'{args.precision}_loss', csv_filename) 
+    if args.precision == 'amp':
+        append_to_csv('Epoch', 'AMP_loss', csv_filename) 
+    elif args.precision == 'fp32':
+        append_to_csv('Epoch', 'FP32_loss', csv_filename) 
+    elif args.precision == 'fp16':
+        append_to_csv('Epoch', 'FP16_loss', csv_filename)
     
+        
     train_start_time = timeit.default_timer()
     # start training ---------------------------------------------------------------
     for epoch in range(1, settings.EPOCH + 1):
@@ -323,8 +303,7 @@ if __name__ == '__main__':
         elif args.precision == 'fp16':
             net = net.half()
             fp16_train(epoch)
-        elif args.precision == 'emp':
-            emp_train(epoch)
+        
         
         acc = eval_training(epoch)
         #start to save best performance model after learning rate decay to 0.01

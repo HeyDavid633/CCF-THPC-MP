@@ -218,14 +218,20 @@ def alexnet_forward(x, conv_params, fc_params, use_relu=True):
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        print("Usage: python moti1_diff_precision_time.py FP16|FP32")
+        print("Usage: python moti1_diff_precision_time.py BF16|FP16|FP32")
         sys.exit(1)
     if sys.argv[1] == 'FP32':
         data_type = torch.float32
-    else:
+    elif sys.argv[1] == 'FP16':
         data_type = torch.float16
+    elif sys.argv[1] == 'BF16':
+        data_type = torch.bfloat16
+    elif sys.argv[1] == 'FP8e4m3':
+        data_type = torch.float8_e4m3fn
+    elif sys.argv[1] == 'FP8e5m2':
+        data_type = torch.float8_e5m2
+        
     print(f"Training with mixed precision: {data_type}")   
-    
     
     
     device = torch_cuda_active()
@@ -245,7 +251,6 @@ if __name__ == '__main__':
         (torch.randn(4096, 4096, device=device, dtype=data_type), torch.randn(4096, device=device, dtype=data_type)),
         (torch.randn(1000, 4096, device=device, dtype=data_type), torch.randn(1000, device=device, dtype=data_type))  
     ]
-
 
     total_start_time = timeit.default_timer()
     operator_infos = alexnet_forward(x_example, conv_params_example, fc_params_example)
