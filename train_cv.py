@@ -1,14 +1,11 @@
-# 2024.06.22 训练脚本
-#    
-# 相比于demo/train.py删除了checkpoint记录
-# 之后还需要换更多的数据集，目前只有 CIFAR100
-# 可以直接进行fp16的训练
-# 
+# 2024.06.28 CV 类模型的训练脚本 
+#
+# 数据集针对 CIFAR100
 # 目前该代码可以直接跑通 alexnet vgg11 vgg16 inceptionv3 shufflenet resnet50
 #
-# AMP    python train.py -net vgg16 -epoch 5 -precision amp 
-# FP32   python train.py -net vgg16 -epoch 5 -precision fp32
-# FP16   python train.py -net vgg16 -epoch 5 -precision fp16
+# AMP    python train_cv.py -net vgg16 -epoch 5 -precision amp 
+# FP32   python train_cv.py -net vgg16 -epoch 5 -precision fp32
+# FP16   python train_cv.py -net vgg16 -epoch 5 -precision fp16
 
 import csv
 import os
@@ -337,7 +334,6 @@ if __name__ == '__main__':
     print('Each epoch average cost time {:.2f} sec'.format(sum(each_epoch_time) / settings.EPOCH))
     
     append_info_to_csv(round((train_end_time - train_start_time)/60, 2), csv_filename)
-    
     
 
     writer.close()

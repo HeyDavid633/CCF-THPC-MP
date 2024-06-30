@@ -13,6 +13,7 @@ import torch
 from torch.optim.lr_scheduler import _LRScheduler
 import torchvision
 import torchvision.transforms as transforms
+import torchvision.datasets as datasets
 from torch.utils.data import DataLoader
 
 
@@ -201,6 +202,56 @@ def best_acc_weights(weights_folder):
 
     best_files = sorted(best_files, key=lambda w: int(re.search(regex_str, w).groups()[1]))
     return best_files[-1]
+
+def load_ImageNet(ImageNet_PATH, batch_size=64, workers=3, pin_memory=True): 
+    
+    traindir = os.path.join(ImageNet_PATH, 'train')
+    valdir   = os.path.join(ImageNet_PATH, 'val')
+    print('traindir = ',traindir)
+    print('valdir = ',valdir)
+    
+    normalizer = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+
+    train_dataset = datasets.ImageFolder(
+        traindir,
+        transforms.Compose([
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalizer
+        ])
+    )
+
+    val_dataset = datasets.ImageFolder(
+        valdir,
+        transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalizer
+        ])
+    )
+    print('train_dataset = ',len(train_dataset))
+    print('val_dataset   = ',len(val_dataset))
+    
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=workers,
+        pin_memory=pin_memory,
+        sampler=None
+    )
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=workers,
+        pin_memory=pin_memory
+    )
+    return train_loader, val_loader, train_dataset, val_dataset
+
 
 
 def torch_cuda_active():
