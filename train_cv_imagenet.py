@@ -45,7 +45,6 @@ def append_to_csv(epoch, loss, filename):
 def fp32_train(epoch):
     
     net.train()
-
     running_loss = 0.0
     tqdm_bar = tqdm(train_loader, desc=f'Training Epoch {epoch}', ncols=100) 
     

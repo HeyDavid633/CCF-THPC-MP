@@ -1,5 +1,4 @@
 # 6.30 为Bert的数据集SQuAD构造pkl特征文件
-# 
 import pickle
 from transformers.data.processors.squad import SquadV2Processor, squad_convert_examples_to_features
 from transformers import BertTokenizer
@@ -8,6 +7,9 @@ from transformers import BertTokenizer
 processor = SquadV2Processor()
 train_examples = processor.get_train_examples('data/SQuAD')
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+# 初始化一个列表来存储原始数据的元数据
+original_data = [{"id": ex.qas_id, "answers": ex.answers} for ex in train_examples]
 
 # 将SQuAD 2.0示例转换为BERT输入特征
 train_features = squad_convert_examples_to_features(
@@ -24,3 +26,7 @@ train_features = squad_convert_examples_to_features(
 # 将特征保存到磁盘上
 with open('data/SQuAD/train_features.pkl', 'wb') as f:
     pickle.dump(train_features, f)
+    
+# 保存原始数据的 元数据
+with open('data/SQuAD/train_original_data.pkl', 'wb') as f:
+    pickle.dump(original_data, f)
