@@ -1,8 +1,8 @@
-# 2024.07.01 bert模型训练脚本 
+# 2024.07.02 bert模型训练脚本 
 #
 # 数据集针对 SQuAD 
-# 先通过 squad_feature_creation.py生成特征文件 这里进行调用
-# 训练OK，但模型性能评估还有一定的问题
+# 先通过 squad_feature_creation.py生成特征文件 这里进行调用 --- 也没成功
+# 训练OK，但模型性能评估还有一定的问题 退一步不要EM/F1 只要一个Accuracy
 #
 # AMP    python train_bert.py -epoch 5 -batch_size 16 -precision amp 
 # FP32   python train_bert.py -epoch 5 -precision fp32
@@ -17,6 +17,7 @@ from transformers import BertForQuestionAnswering, BertTokenizer, BertForQuestio
 import torch
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 from torch.cuda.amp import GradScaler, autocast
+from transformers.data.processors.squad import SquadV2Processor
 
 
 scaler = GradScaler(enabled=True)
@@ -97,8 +98,6 @@ def amp_train(epoch):
     each_epoch_time.append(epoch_elapsed_time)
     append_to_csv(epoch, running_loss / len(train_dataloader), csv_filename) 
 
-
-
 if __name__ == '__main__':
     torch.manual_seed(0)    #确保不同精度在进入权重相同
     parser = argparse.ArgumentParser()
@@ -157,9 +156,10 @@ if __name__ == '__main__':
     print('Each epoch average cost time {:.2f} sec'.format(sum(each_epoch_time) / num_epochs))
     append_info_to_csv(round((train_end_time - train_start_time)/60, 2), csv_filename)
      
-        
-    print("开始模型评估...")
-    eval_model(num_epochs)
-    
+
+    # print("Model evaluting ... ...")
+    # accuracy = evaluate_model()
+    # print(f"Accuracy: {accuracy}%")
+
     # 保存微调后的模型
     model.save_pretrained("data/SQuAD/SQuAD_finetuned_bert")
