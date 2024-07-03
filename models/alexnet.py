@@ -1,16 +1,21 @@
-# 6.22 AlexNet
+# 7.03 AlexNet
 # 
-# 初步尝试 使用在前向过程中：
-# 1.输出精度
-# 2.修改精度
-# AlexNet铺平 至少把前向过程展开
+# AlexNet 原始定义(修改了一定的维度以适应CIFAR-100的数据集) --- 用来做对比测试 fp32 / AMP
+# AlexNet_flaten 展开的AlexNet 
+# AlexNet_EMP 可以给到输入串的AlexNet
+#
+# AlexNet_imagenet 原始定义 适应于ImageNet数据集
+# AlexNet_EMP_imagenet EMP寻语
 
+import torch
 import torch.nn as nn
+from utils import policy_string_analyze
+#最原始的定义
 class AlexNet(nn.Module):
     def __init__(self, num_classes=1000):
         super(AlexNet, self).__init__()
         self.features = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=2),
+            nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Conv2d(64, 192, kernel_size=3, padding=1),
@@ -22,7 +27,7 @@ class AlexNet(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(256, 256, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
-            nn.AdaptiveAvgPool2d((1, 1))   # 修改2  移除或调整原本的MaxPool2d，这里采用自适应池化
+            nn.AdaptiveAvgPool2d((1, 1))  
         )
         self.classifier = nn.Sequential(
             nn.Dropout(),
@@ -59,7 +64,6 @@ class AlexNet_flaten(nn.Module):
     def __init__(self, num_classes=1000):
         super(AlexNet_flaten, self).__init__()
         
-        # 定义卷积层和池化层
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1)
         self.relu1 = nn.ReLU(inplace=True)
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
@@ -78,7 +82,6 @@ class AlexNet_flaten(nn.Module):
         self.relu5 = nn.ReLU(inplace=True)
         self.pool3 = nn.AdaptiveAvgPool2d((1, 1))
         
-        # 定义全连接层
         self.dropout1 = nn.Dropout()
         self.fc1 = nn.Linear(256, 4096)
         self.relu_fc1 = nn.ReLU(inplace=True)
@@ -169,8 +172,76 @@ class AlexNet_flaten(nn.Module):
         
         return x
                 
+class AlexNet_EMP(nn.Module):
+    def __init__(self, num_classes=1000, policy_precision_string='00000000000000000000'):
+        super(AlexNet_EMP, self).__init__()
+        
+        self.datatype_policy = policy_string_analyze(policy_precision_string)
+        
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, dtype=self.datatype_policy[0])
+        self.relu1 = nn.ReLU(inplace=True)
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv2 = nn.Conv2d(64, 192, kernel_size=3, padding=1, dtype=self.datatype_policy[3])
+        self.relu2 = nn.ReLU(inplace=True)
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv3 = nn.Conv2d(192, 384, kernel_size=3, padding=1, dtype=self.datatype_policy[6])
+        self.relu3 = nn.ReLU(inplace=True)
+        self.conv4 = nn.Conv2d(384, 256, kernel_size=3, padding=1, dtype=self.datatype_policy[8])
+        self.relu4 = nn.ReLU(inplace=True)
+        self.conv5 = nn.Conv2d(256, 256, kernel_size=3, padding=1, dtype=self.datatype_policy[10])
+        self.relu5 = nn.ReLU(inplace=True)
+        self.pool3 = nn.AdaptiveAvgPool2d((1, 1))
+        self.dropout1 = nn.Dropout()
+        self.fc1 = nn.Linear(256, 4096, dtype=self.datatype_policy[14])
+        self.relu_fc1 = nn.ReLU(inplace=True)
+        self.dropout2 = nn.Dropout()
+        self.fc2 = nn.Linear(4096, 4096, dtype=self.datatype_policy[17])
+        self.relu_fc2 = nn.ReLU(inplace=True)
+        self.fc3 = nn.Linear(4096, num_classes, dtype=self.datatype_policy[19])
+        
+    def forward(self, x):
+        if self.datatype_policy[0] == torch.float16:
+            x = x.to(torch.float16)
+        
+        for i, module in enumerate(self.children()):    
+                     
+            if i < len(list(self.children())) - 1:
+                if self.datatype_policy[i+1] != x.dtype:
+                    if self.datatype_policy[i+1] == torch.float16:
+                        x = x.to(torch.float16)
+                    else:
+                        x = x.to(torch.float32)                
+            x = module(x)
+            
+            if i == 13:
+                x = x.view(x.size(0), -1)
+            
+        return x
+    
+    def forward_with_print(self, x):
+        if self.datatype_policy[0] == torch.float16:     # 初始类型转换
+            x = x.to(torch.float16)
+        
+        for i, module in enumerate(self.children()): 
+            layer_name = module._get_name()
+            if i == 0: print("\nEMP Precision Policy --------------------")
+            print(f"{i+1:2d}\t{layer_name:10s}\t{x.dtype}")    # 输出每层精度信息
+            
+            if i < len(list(self.children())) - 1:
+                if self.datatype_policy[i+1] != x.dtype:
+                    if self.datatype_policy[i+1] == torch.float16:
+                        x = x.to(torch.float16)
+                    else:
+                        x = x.to(torch.float32)
+            
+            x = module(x)
+            if i == 13:
+                x = x.view(x.size(0), -1)
+            
+        return x
                 
-import torch.nn as nn
+           
+                                
 class AlexNet_imagenet(nn.Module):
     def __init__(self, num_classes=1000):
         super(AlexNet_imagenet, self).__init__()
@@ -204,10 +275,89 @@ class AlexNet_imagenet(nn.Module):
         x = x.view(x.size(0), 256 * 6 * 6)
         x = self.classifier(x)
         return x
+              
+class AlexNet_EMP_imagenet(nn.Module):
+    def __init__(self, num_classes=1000, policy_precision_string='00000000000000000000'):
+        super(AlexNet_EMP_imagenet, self).__init__()
+        
+        self.datatype_policy = policy_string_analyze(policy_precision_string)
+        
+        # 定义卷积层和池化层
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=2, dtype=self.datatype_policy[0])
+        self.relu1 = nn.ReLU(inplace=True)
+        self.pool1 = nn.MaxPool2d(kernel_size=3, stride=2)
+        self.conv2 = nn.Conv2d(64, 192, kernel_size=5, padding=2, dtype=self.datatype_policy[3])
+        self.relu2 = nn.ReLU(inplace=True)
+        self.pool2 = nn.MaxPool2d(kernel_size=3, stride=2)
+        self.conv3 = nn.Conv2d(192, 384, kernel_size=3, padding=1, dtype=self.datatype_policy[6])
+        self.relu3 = nn.ReLU(inplace=True)
+        self.conv4 = nn.Conv2d(384, 256, kernel_size=3, padding=1, dtype=self.datatype_policy[8])
+        self.relu4 = nn.ReLU(inplace=True)
+        self.conv5 = nn.Conv2d(256, 256, kernel_size=3, padding=1, dtype=self.datatype_policy[10])
+        self.relu5 = nn.ReLU(inplace=True)
+        self.pool3 = nn.MaxPool2d(kernel_size=3, stride=2)
+        
+        # 定义全连接层
+        self.dropout1 = nn.Dropout()
+        self.fc1 = nn.Linear(256 * 6 * 6, 4096, dtype=self.datatype_policy[14])
+        self.relu_fc1 = nn.ReLU(inplace=True)
+        self.dropout2 = nn.Dropout()
+        self.fc2 = nn.Linear(4096, 4096, dtype=self.datatype_policy[17])
+        self.relu_fc2 = nn.ReLU(inplace=True)
+        self.fc3 = nn.Linear(4096, num_classes, dtype=self.datatype_policy[19])
+        
+    def forward(self, x):
+        if self.datatype_policy[0] == torch.float16:
+            x = x.to(torch.float16)
+        
+        for i, module in enumerate(self.children()):    
+                     
+            if i < len(list(self.children())) - 1:
+                if self.datatype_policy[i+1] != x.dtype:
+                    if self.datatype_policy[i+1] == torch.float16:
+                        x = x.to(torch.float16)
+                    else:
+                        x = x.to(torch.float32)                
+            x = module(x)
+            
+            if i == 13:
+                x = x.view(x.size(0), 256 * 6 * 6)
+            
+        return x
+    
+    def forward_with_print(self, x):
+        if self.datatype_policy[0] == torch.float16:     # 初始类型转换
+            x = x.to(torch.float16)
+        
+        for i, module in enumerate(self.children()): 
+            layer_name = module._get_name()
+            if i == 0: print("EMP Precision Policy --------------------\n")
+            print(f"{i+1:2d}\t{layer_name:10s}\t{x.dtype}")    # 输出每层精度信息
+            
+            if i < len(list(self.children())) - 1:
+                if self.datatype_policy[i+1] != x.dtype:
+                    if self.datatype_policy[i+1] == torch.float16:
+                        x = x.to(torch.float16)
+                    else:
+                        x = x.to(torch.float32)
+            
+            x = module(x)
+            if i == 13:
+                x = x.view(x.size(0), 256 * 6 * 6)
+            
+        return x
+    
                 
 def alexnet():
-    # return AlexNet()
     return AlexNet_flaten()
 
 def alexnet_imagenet():
     return AlexNet_imagenet()
+
+def alexnet_emp(policy_precision_string):
+    return AlexNet_EMP(policy_precision_string = policy_precision_string)  
+
+def alexnet_emp_imagenet(policy_precision_string):
+    return AlexNet_EMP_imagenet(policy_precision_string = policy_precision_string)  
+
+

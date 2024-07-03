@@ -1,15 +1,13 @@
-"""vgg in pytorch
-
-
-[1] Karen Simonyan, Andrew Zisserman
-
-    Very Deep Convolutional Networks for Large-Scale Image Recognition.
-    https://arxiv.org/abs/1409.1556v6
-"""
-'''VGG11/13/16/19 in Pytorch.'''
+# 7.04 Vgg
+# 只保留Vgg16的相关实现 
+# 
+# VGG16 原始定义 适应于CIFAR-100数据集
+# VGG16_EMP 
+# 
 
 import torch
 import torch.nn as nn
+from utils import policy_string_analyze
 
 cfg = {
     'A' : [64,     'M', 128,      'M', 256, 256,           'M', 512, 512,           'M', 512, 512,           'M'],
@@ -55,7 +53,6 @@ class VGG(nn.Module):
         
         return output
     
-    
 def make_layers(cfg, batch_norm=False):
     layers = []
 
@@ -74,7 +71,6 @@ def make_layers(cfg, batch_norm=False):
         input_channel = l
 
     return nn.Sequential(*layers)
-
 
 class VGG11(nn.Module):
     def __init__(self, num_classes=1000):
@@ -398,6 +394,106 @@ class VGG16(nn.Module):
         
         return x
 
+class VGG16_EMP(nn.Module):
+    def __init__(self, num_classes=1000, policy_precision_string = '00000000000000000000'+'00000000000000000000'+'00000000000'):
+        super(VGG16_EMP, self).__init__()
+    
+        self.datatype_policy = policy_string_analyze(policy_precision_string)
+        
+        self.conv1_1 = nn.Conv2d(3, 64, kernel_size=3, padding=1, dtype=self.datatype_policy[0])
+        self.bn1_1 = nn.BatchNorm2d(64, dtype=self.datatype_policy[1])
+        self.relu1_1 = nn.ReLU(inplace=True)
+        self.conv1_2 = nn.Conv2d(64, 64, kernel_size=3, padding=1, dtype=self.datatype_policy[3])
+        self.bn1_2 = nn.BatchNorm2d(64, dtype=self.datatype_policy[4])
+        self.relu1_2 = nn.ReLU(inplace=True)
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv2_1 = nn.Conv2d(64, 128, kernel_size=3, padding=1, dtype=self.datatype_policy[7])
+        self.bn2_1 = nn.BatchNorm2d(128, dtype=self.datatype_policy[8])
+        self.relu2_1 = nn.ReLU(inplace=True)
+        self.conv2_2 = nn.Conv2d(128, 128, kernel_size=3, padding=1, dtype=self.datatype_policy[10])
+        self.bn2_2 = nn.BatchNorm2d(128, dtype=self.datatype_policy[11])
+        self.relu2_2 = nn.ReLU(inplace=True)
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv3_1 = nn.Conv2d(128, 256, kernel_size=3, padding=1, dtype=self.datatype_policy[14])
+        self.bn3_1 = nn.BatchNorm2d(256, dtype=self.datatype_policy[15])
+        self.relu3_1 = nn.ReLU(inplace=True)
+        self.conv3_2 = nn.Conv2d(256, 256, kernel_size=3, padding=1, dtype=self.datatype_policy[17])
+        self.bn3_2 = nn.BatchNorm2d(256, dtype=self.datatype_policy[18])
+        self.relu3_2 = nn.ReLU(inplace=True)
+        self.conv3_3 = nn.Conv2d(256, 256, kernel_size=3, padding=1, dtype=self.datatype_policy[20])
+        self.bn3_3 = nn.BatchNorm2d(256, dtype=self.datatype_policy[21])
+        self.relu3_3 = nn.ReLU(inplace=True)
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv4_1 = nn.Conv2d(256, 512, kernel_size=3, padding=1, dtype=self.datatype_policy[24])
+        self.bn4_1 = nn.BatchNorm2d(512, dtype=self.datatype_policy[25])
+        self.relu4_1 = nn.ReLU(inplace=True)
+        self.conv4_2 = nn.Conv2d(512, 512, kernel_size=3, padding=1, dtype=self.datatype_policy[27])
+        self.bn4_2 = nn.BatchNorm2d(512, dtype=self.datatype_policy[28])
+        self.relu4_2 = nn.ReLU(inplace=True)
+        self.conv4_3 = nn.Conv2d(512, 512, kernel_size=3, padding=1, dtype=self.datatype_policy[30])
+        self.bn4_3 = nn.BatchNorm2d(512, dtype=self.datatype_policy[31])
+        self.relu4_3 = nn.ReLU(inplace=True)
+        self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv5_1 = nn.Conv2d(512, 512, kernel_size=3, padding=1, dtype=self.datatype_policy[34])
+        self.bn5_1 = nn.BatchNorm2d(512, dtype=self.datatype_policy[35])
+        self.relu5_1 = nn.ReLU(inplace=True)
+        self.conv5_2 = nn.Conv2d(512, 512, kernel_size=3, padding=1, dtype=self.datatype_policy[37])
+        self.bn5_2 = nn.BatchNorm2d(512, dtype=self.datatype_policy[38])
+        self.relu5_2 = nn.ReLU(inplace=True)
+        self.conv5_3 = nn.Conv2d(512, 512, kernel_size=3, padding=1, dtype=self.datatype_policy[40])
+        self.bn5_3 = nn.BatchNorm2d(512, dtype=self.datatype_policy[41])
+        self.relu5_3 = nn.ReLU(inplace=True)
+        self.pool5 = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        
+        self.fc1 = nn.Linear(512, 4096, dtype=self.datatype_policy[44])
+        self.relu_fc1 = nn.ReLU(inplace=True)
+        self.dropout1 = nn.Dropout()
+        self.fc2 = nn.Linear(4096, 4096, dtype=self.datatype_policy[47])
+        self.relu_fc2 = nn.ReLU(inplace=True)
+        self.dropout2 = nn.Dropout()
+        self.fc3 = nn.Linear(4096, num_classes, dtype=self.datatype_policy[50])
+        
+        
+    def forward(self, x):
+        if self.datatype_policy[0] == torch.float16:
+            x = x.to(torch.float16)
+        
+        for i, module in enumerate(self.children()):    
+            if i < len(list(self.children())) - 1:
+                if self.datatype_policy[i+1] != x.dtype:
+                    if self.datatype_policy[i+1] == torch.float16:
+                        x = x.to(torch.float16)
+                    else:
+                        x = x.to(torch.float32)                
+            x = module(x)
+            
+            if i == 43:
+                x = x.view(x.size(0), -1)
+                
+        return x
+    
+    def forward_with_print(self, x):
+        if self.datatype_policy[0] == torch.float16:     # 初始类型转换
+            x = x.to(torch.float16)
+        
+        for i, module in enumerate(self.children()): 
+            layer_name = module._get_name()
+            if i == 0: print("\nEMP Precision Policy --------------------")
+            print(f"{i+1:2d}\t{layer_name:10s}\t{x.dtype}")    # 输出每层精度信息
+            
+            if i < len(list(self.children())) - 1:
+                if self.datatype_policy[i+1] != x.dtype:
+                    if self.datatype_policy[i+1] == torch.float16:
+                        x = x.to(torch.float16)
+                    else:
+                        x = x.to(torch.float32)
+            
+            x = module(x)
+            if i == 43:
+                x = x.view(x.size(0), -1)
+        return x
+
 
 def vgg11_bn():
     # return VGG(make_layers(cfg['A'], batch_norm=True))
@@ -407,4 +503,6 @@ def vgg16_bn():
     # return VGG(make_layers(cfg['D'], batch_norm=True))
     return VGG16()
 
+def vgg16_bn_emp(policy_precision_string):
+    return VGG16_EMP(policy_precision_string = policy_precision_string)
 
