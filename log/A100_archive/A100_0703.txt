@@ -1,0 +1,18 @@
+alexnet with 100 epoch, 	Precision Policy: emp, 	Total training time: 12.24 min
+Each epoch average cost time: 6.48 sec, 	Final Accuracy: 0.6255
+
+alexnet with 100 epoch, 	Precision Policy: amp, 	Total training time: 11.92 min
+Each epoch average cost time: 6.31 sec, 	Final Accuracy: 0.0100
+
+alexnet with 100 epoch, 	Precision Policy: fp32, 	Total training time: 12.01 min
+Each epoch average cost time: 6.39 sec, 	Final Accuracy: 0.0100
+
+vgg16 with 100 epoch, 	Precision Policy: emp, 	Total training time: 11.74 min
+Each epoch average cost time: 6.22 sec, 	Final Accuracy: 0.7012
+
+vgg16 with 100 epoch, 	Precision Policy: amp, 	Total training time: 11.56 min
+Each epoch average cost time: 6.11 sec, 	Final Accuracy: 0.7088
+
+vgg16 with 100 epoch, 	Precision Policy: fp32, 	Total training time: 11.44 min
+Each epoch average cost time: 6.07 sec, 	Final Accuracy: 0.7004
+

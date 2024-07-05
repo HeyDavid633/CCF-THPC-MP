@@ -176,6 +176,9 @@ class AlexNet_EMP(nn.Module):
     def __init__(self, num_classes=1000, policy_precision_string='00000000000000000000'):
         super(AlexNet_EMP, self).__init__()
         
+        self.stage1_op_name = ["Conv2d", "BatchNorm2d", "Linear"]
+        self.stage1_op = []
+        self.all_layer_op = []
         self.datatype_policy = policy_string_analyze(policy_precision_string)
         
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, dtype=self.datatype_policy[0])
@@ -203,14 +206,13 @@ class AlexNet_EMP(nn.Module):
         if self.datatype_policy[0] == torch.float16:
             x = x.to(torch.float16)
         
-        for i, module in enumerate(self.children()):    
-                     
-            if i < len(list(self.children())) - 1:
-                if self.datatype_policy[i+1] != x.dtype:
-                    if self.datatype_policy[i+1] == torch.float16:
+        for i, module in enumerate(self.children()):             
+            if i > 0 and i < len(list(self.children())) :
+                if self.datatype_policy[i-1] != self.datatype_policy[i]:
+                    if self.datatype_policy[i] == torch.float16:
                         x = x.to(torch.float16)
                     else:
-                        x = x.to(torch.float32)                
+                        x = x.to(torch.float32)
             x = module(x)
             
             if i == 13:
@@ -219,26 +221,30 @@ class AlexNet_EMP(nn.Module):
         return x
     
     def forward_with_print(self, x):
-        if self.datatype_policy[0] == torch.float16:     # 初始类型转换
+        if self.datatype_policy[0] == torch.float16:
             x = x.to(torch.float16)
-        
-        for i, module in enumerate(self.children()): 
-            layer_name = module._get_name()
-            if i == 0: print("\nEMP Precision Policy --------------------")
-            print(f"{i+1:2d}\t{layer_name:10s}\t{x.dtype}")    # 输出每层精度信息
-            
-            if i < len(list(self.children())) - 1:
-                if self.datatype_policy[i+1] != x.dtype:
-                    if self.datatype_policy[i+1] == torch.float16:
+
+        for i, module in enumerate(self.children()):
+            if i > 0 and i < len(list(self.children())) :
+                if self.datatype_policy[i-1] != self.datatype_policy[i]:
+                    if self.datatype_policy[i] == torch.float16:
                         x = x.to(torch.float16)
                     else:
                         x = x.to(torch.float32)
-            
             x = module(x)
+            
             if i == 13:
                 x = x.view(x.size(0), -1)
-            
-        return x
+                
+            layer_name = module._get_name()
+            # if i == 0: print("\nEMP Precision Policy "+"-"*50)
+            # print(f"{i+1:2d}\t{layer_name:10s}\t{x.dtype}")
+
+            if layer_name in self.stage1_op_name:
+                self.stage1_op.append({"id": i, "layer_name": layer_name, "data_type": str(x.dtype)})
+            self.all_layer_op.append({"id": i, "layer_name": layer_name, "data_type": str(x.dtype)})
+
+        return self.stage1_op, self.all_layer_op, x
                 
            
                                 
