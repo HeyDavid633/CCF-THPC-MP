@@ -1,4 +1,7 @@
-# 2024.07.05 CV类模型的训练脚本 
+# 2024.07.06 CV类模型的训练脚本 
+# 1epoch时间 
+# 100 epoch Accuracy
+# GPU显存占用
 #
 # 数据集针对 CIFAR100
 # 目前该代码可以直接跑通 alexnet vgg11 vgg16 inceptionv3 shufflenet resnet50
@@ -21,10 +24,8 @@ from conf import settings
 from utils import get_training_dataloader, get_test_dataloader, WarmUpLR, torch_cuda_active
     
 scaler = GradScaler(enabled=True)
-summary_info_txt_filename = '0705.txt'
 csv_filename = 'loss.csv'
 each_epoch_time = []
-        
     
 def append_info_to_csv(info_data, filename):
     with open(filename, mode='a', newline='') as csvfile:
@@ -38,18 +39,15 @@ def append_to_csv(epoch, loss, filename):
 
 def amp_train(epoch):
     net.train()
-    
     running_loss = 0.0
     tqdm_bar = tqdm(cifar100_training_loader, desc=f'Training Epoch {epoch}', ncols=100)
-    
     first_batch = True
     epoch_start_time = timeit.default_timer()
     
     for batch_index, (images, labels) in enumerate(tqdm_bar):
 
-        if args.gpu:
-            labels = labels.cuda()
-            images = images.cuda()
+        labels = labels.cuda()
+        images = images.cuda()
 
         #适用于 AMP 的训练
         optimizer.zero_grad(set_to_none=True)
@@ -83,10 +81,8 @@ def amp_train(epoch):
 def fp32_train(epoch):
     
     net.train()
-
     running_loss = 0.0
     tqdm_bar = tqdm(cifar100_training_loader, desc=f'Training Epoch {epoch}', ncols=100) 
-    
     epoch_start_time = timeit.default_timer()
     
     for batch_index, (images, labels) in enumerate(tqdm_bar):
@@ -97,7 +93,7 @@ def fp32_train(epoch):
         outputs = net(images)                   # 前向传播 得到预测输出
         loss = loss_function(outputs, labels)   # 计算预测输出与真实标签之间的损失
         loss.backward()                         # 反向 计算梯度
-        optimizer.step()                        # 根据梯度更新模型参数
+        optimizer.step()                        # 根据梯度更新模型参数        
         running_loss += loss.item()             # 累计当前batch的loss到running_loss
         
         postfix = {'Loss': f"{running_loss / (batch_index + 1):.4f}", 'LR': f"{optimizer.param_groups[0]['lr']:.4f}"}
@@ -111,7 +107,6 @@ def fp32_train(epoch):
     epoch_elapsed_time = timeit.default_timer() - epoch_start_time
     each_epoch_time.append(epoch_elapsed_time)
     append_to_csv(epoch, running_loss / len(cifar100_training_loader), csv_filename)   
-                
 
 @torch.no_grad()
 def eval_training(epoch=0, tb=False):
@@ -135,9 +130,6 @@ def eval_training(epoch=0, tb=False):
         correct += preds.eq(labels).sum()
 
     finish = timeit.default_timer()
-    # if args.gpu:        #关于这一步还需要解读
-    #     print('GPU INFO.....')
-    #     print(torch.cuda.memory_summary(), end='')
     
     if epoch % 5 == 0 or settings.EPOCH == epoch:
         print('Evaluating Network: Epoch: {}, Average loss: {:.4f}, Accuracy: {:.4f}, Time consumed: {:.2f}s \n'.format(
@@ -231,10 +223,19 @@ if __name__ == '__main__':
     
     print('\n\nTraining summary', '-'*50,'\n{} with {} epoch, \tPrecision Policy: {}, \tTotal training time: {:.2f} min'.format(args.net, settings.EPOCH, args.precision, (train_end_time - train_start_time)/60))
     print('Each epoch average cost time: {:.2f} sec, \tFinal Accuracy: {:.4f}'.format(sum(each_epoch_time) / settings.EPOCH, best_acc))
+    print('Max GPU memory: {:.2f} MB'.format(torch.cuda.max_memory_allocated() / (1024 ** 2)))
     
+    
+    if settings.EPOCH <= 5: 
+        summary_info_txt_filename = 'Log_Performance_GPU_memory.txt'
+    else:
+        summary_info_txt_filename = 'Log_Accuracy.txt'
+        
     with open(summary_info_txt_filename, 'a') as f: 
         print('{} with {} epoch, \tPrecision Policy: {}, \tTotal training time: {:.2f} min'.format(args.net, settings.EPOCH, args.precision, (train_end_time - train_start_time)/60), file=f)
-        print('Each epoch average cost time: {:.2f} sec, \tFinal Accuracy: {:.4f}\n'.format(sum(each_epoch_time) / settings.EPOCH, best_acc), file=f)
+        print('Each epoch average cost time: {:.2f} sec, \tFinal Accuracy: {:.4f}'.format(sum(each_epoch_time) / settings.EPOCH, best_acc), file=f)
+        print('Max GPU memory: {:.2f} MB\n'.format(torch.cuda.max_memory_allocated() / (1024 ** 2)), file=f)
+        
     
     
     

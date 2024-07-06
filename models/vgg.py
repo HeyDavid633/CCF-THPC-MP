@@ -4,6 +4,8 @@
 # VGG16 原始定义 适应于CIFAR-100数据集
 # VGG16_EMP 
 # 
+# VGG16_imagenet
+# VGG16_EMP_imagenet
 
 import torch
 import torch.nn as nn
@@ -234,6 +236,7 @@ class VGG11(nn.Module):
         return x
         
 
+# 可以直接投入给imagenet来训练
 class VGG16(nn.Module):
     def __init__(self, num_classes=1000):
         super(VGG16, self).__init__()
@@ -494,6 +497,267 @@ class VGG16_EMP(nn.Module):
                 x = x.view(x.size(0), -1)
         return x
 
+class VGG16_imagenet(nn.Module):
+    def __init__(self, num_classes=1000):
+        super(VGG16_imagenet, self).__init__()
+        
+        self.conv1_1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
+        self.bn1_1 = nn.BatchNorm2d(64)
+        self.relu1_1 = nn.ReLU(inplace=True)
+        self.conv1_2 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
+        self.bn1_2 = nn.BatchNorm2d(64)
+        self.relu1_2 = nn.ReLU(inplace=True)
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        self.conv2_1 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.bn2_1 = nn.BatchNorm2d(128)
+        self.relu2_1 = nn.ReLU(inplace=True)
+        self.conv2_2 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        self.bn2_2 = nn.BatchNorm2d(128)
+        self.relu2_2 = nn.ReLU(inplace=True)
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        self.conv3_1 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
+        self.bn3_1 = nn.BatchNorm2d(256)
+        self.relu3_1 = nn.ReLU(inplace=True)
+        self.conv3_2 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
+        self.bn3_2 = nn.BatchNorm2d(256)
+        self.relu3_2 = nn.ReLU(inplace=True)
+        self.conv3_3 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
+        self.bn3_3 = nn.BatchNorm2d(256)
+        self.relu3_3 = nn.ReLU(inplace=True)
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        self.conv4_1 = nn.Conv2d(256, 512, kernel_size=3, padding=1)
+        self.bn4_1 = nn.BatchNorm2d(512)
+        self.relu4_1 = nn.ReLU(inplace=True)
+        self.conv4_2 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.bn4_2 = nn.BatchNorm2d(512)
+        self.relu4_2 = nn.ReLU(inplace=True)
+        self.conv4_3 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.bn4_3 = nn.BatchNorm2d(512)
+        self.relu4_3 = nn.ReLU(inplace=True)
+        self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        self.conv5_1 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.bn5_1 = nn.BatchNorm2d(512)
+        self.relu5_1 = nn.ReLU(inplace=True)
+        self.conv5_2 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.bn5_2 = nn.BatchNorm2d(512)
+        self.relu5_2 = nn.ReLU(inplace=True)
+        self.conv5_3 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+        self.bn5_3 = nn.BatchNorm2d(512)
+        self.relu5_3 = nn.ReLU(inplace=True)
+        self.pool5 = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        
+        # self.fc1 = nn.Linear(512, 4096)
+        self.fc1 = nn.Linear(512 * 7 * 7, 4096)  # 注意调整输入维度以匹配特征图尺寸
+        self.relu_fc1 = nn.ReLU(inplace=True)
+        self.dropout1 = nn.Dropout()
+        self.fc2 = nn.Linear(4096, 4096)
+        self.relu_fc2 = nn.ReLU(inplace=True)
+        self.dropout2 = nn.Dropout()
+        self.fc3 = nn.Linear(4096, num_classes)
+        
+    def forward(self, x):
+        x = self.relu1_1(self.bn1_1(self.conv1_1(x)))
+        x = self.relu1_2(self.bn1_2(self.conv1_2(x)))
+        x = self.pool1(x)
+        
+        x = self.relu2_1(self.bn2_1(self.conv2_1(x)))
+        x = self.relu2_2(self.bn2_2(self.conv2_2(x)))
+        x = self.pool2(x)
+        
+        x = self.relu3_1(self.bn3_1(self.conv3_1(x)))
+        x = self.relu3_2(self.bn3_2(self.conv3_2(x)))
+        x = self.relu3_3(self.bn3_3(self.conv3_3(x)))
+        x = self.pool3(x)
+        
+        x = self.relu4_1(self.bn4_1(self.conv4_1(x)))
+        x = self.relu4_2(self.bn4_2(self.conv4_2(x)))
+        x = self.relu4_3(self.bn4_3(self.conv4_3(x)))
+        x = self.pool4(x)
+        
+        x = self.relu5_1(self.bn5_1(self.conv5_1(x)))
+        x = self.relu5_2(self.bn5_2(self.conv5_2(x)))
+        x = self.relu5_3(self.bn5_3(self.conv5_3(x)))
+        x = self.pool5(x)
+        
+        x = x.view(x.size(0), -1)
+        x = self.relu_fc1(self.fc1(x))
+        x = self.dropout1(x)
+        x = self.relu_fc2(self.fc2(x))
+        x = self.dropout2(x)
+        x = self.fc3(x)
+        return x
+    
+    def forward_with_print(self, x):
+        x = self.relu1_1(self.bn1_1(self.conv1_1(x)))
+        print("Output from relu1_1: ", x.dtype)
+        x = self.relu1_2(self.bn1_2(self.conv1_2(x)))
+        print("Output from relu1_2: ", x.dtype)
+        x = self.pool1(x)
+        print("Output from pool1: ", x.dtype)
+        
+        x = self.relu2_1(self.bn2_1(self.conv2_1(x)))
+        print("Output from relu2_1: ", x.dtype)
+        x = self.relu2_2(self.bn2_2(self.conv2_2(x)))
+        print("Output from relu2_2: ", x.dtype)
+        x = self.pool2(x)
+        print("Output from pool2: ", x.dtype)
+        
+        x = self.relu3_1(self.bn3_1(self.conv3_1(x)))
+        print("Output from relu3_1: ", x.dtype)
+        x = self.relu3_2(self.bn3_2(self.conv3_2(x)))
+        print("Output from relu3_2: ", x.dtype)
+        x = self.relu3_3(self.bn3_3(self.conv3_3(x)))
+        print("Output from relu3_3: ", x.dtype)
+        x = self.pool3(x)
+        print("Output from pool3: ", x.dtype)
+        
+        x = self.relu4_1(self.bn4_1(self.conv4_1(x)))
+        print("Output from relu4_1: ", x.dtype)
+        x = self.relu4_2(self.bn4_2(self.conv4_2(x)))
+        print("Output from relu4_2: ", x.dtype)
+        x = self.relu4_3(self.bn4_3(self.conv4_3(x)))
+        print("Output from relu4_3: ", x.dtype)
+        x = self.pool4(x)
+        print("Output from pool4: ", x.dtype)
+        
+        x = self.relu5_1(self.bn5_1(self.conv5_1(x)))
+        print("Output from relu5_1: ", x.dtype)
+        x = self.relu5_2(self.bn5_2(self.conv5_2(x)))
+        print("Output from relu5_2: ", x.dtype)
+        x = self.relu5_3(self.bn5_3(self.conv5_3(x)))
+        print("Output from relu5_3: ", x.dtype)
+        x = self.pool5(x)
+        print("Output from pool5: ", x.dtype)
+
+        x = x.view(x.size(0), -1)
+        print("Output from View: ", x.dtype)
+        
+        x = self.fc1(x)
+        print("Output from FC1: ", x.dtype)
+        x = self.relu_fc1(x)
+        print("Output from ReLU_FC1: ", x.dtype)
+        x = self.dropout1(x)
+        print("Output from Dropout1: ", x.dtype)
+        
+        x = self.fc2(x)
+        print("Output from FC2: ", x.dtype)
+        x = self.relu_fc2(x)
+        print("Output from ReLU_FC2: ", x.dtype)
+        x = self.dropout2(x)
+        print("Output from Dropout2: ", x.dtype)
+        
+        x = self.fc3(x)
+        print("Output from FC3: ", x.dtype)
+            
+        
+        return x
+
+class VGG16_EMP_imagenet(nn.Module):
+    def __init__(self, num_classes=1000, policy_precision_string = '00000000000000000000'+'00000000000000000000'+'00000000000'):
+        super(VGG16_EMP_imagenet, self).__init__()
+    
+        self.datatype_policy = policy_string_analyze(policy_precision_string)
+        
+        self.conv1_1 = nn.Conv2d(3, 64, kernel_size=3, padding=1, dtype=self.datatype_policy[0])
+        self.bn1_1 = nn.BatchNorm2d(64, dtype=self.datatype_policy[1])
+        self.relu1_1 = nn.ReLU(inplace=True)
+        self.conv1_2 = nn.Conv2d(64, 64, kernel_size=3, padding=1, dtype=self.datatype_policy[3])
+        self.bn1_2 = nn.BatchNorm2d(64, dtype=self.datatype_policy[4])
+        self.relu1_2 = nn.ReLU(inplace=True)
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv2_1 = nn.Conv2d(64, 128, kernel_size=3, padding=1, dtype=self.datatype_policy[7])
+        self.bn2_1 = nn.BatchNorm2d(128, dtype=self.datatype_policy[8])
+        self.relu2_1 = nn.ReLU(inplace=True)
+        self.conv2_2 = nn.Conv2d(128, 128, kernel_size=3, padding=1, dtype=self.datatype_policy[10])
+        self.bn2_2 = nn.BatchNorm2d(128, dtype=self.datatype_policy[11])
+        self.relu2_2 = nn.ReLU(inplace=True)
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv3_1 = nn.Conv2d(128, 256, kernel_size=3, padding=1, dtype=self.datatype_policy[14])
+        self.bn3_1 = nn.BatchNorm2d(256, dtype=self.datatype_policy[15])
+        self.relu3_1 = nn.ReLU(inplace=True)
+        self.conv3_2 = nn.Conv2d(256, 256, kernel_size=3, padding=1, dtype=self.datatype_policy[17])
+        self.bn3_2 = nn.BatchNorm2d(256, dtype=self.datatype_policy[18])
+        self.relu3_2 = nn.ReLU(inplace=True)
+        self.conv3_3 = nn.Conv2d(256, 256, kernel_size=3, padding=1, dtype=self.datatype_policy[20])
+        self.bn3_3 = nn.BatchNorm2d(256, dtype=self.datatype_policy[21])
+        self.relu3_3 = nn.ReLU(inplace=True)
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv4_1 = nn.Conv2d(256, 512, kernel_size=3, padding=1, dtype=self.datatype_policy[24])
+        self.bn4_1 = nn.BatchNorm2d(512, dtype=self.datatype_policy[25])
+        self.relu4_1 = nn.ReLU(inplace=True)
+        self.conv4_2 = nn.Conv2d(512, 512, kernel_size=3, padding=1, dtype=self.datatype_policy[27])
+        self.bn4_2 = nn.BatchNorm2d(512, dtype=self.datatype_policy[28])
+        self.relu4_2 = nn.ReLU(inplace=True)
+        self.conv4_3 = nn.Conv2d(512, 512, kernel_size=3, padding=1, dtype=self.datatype_policy[30])
+        self.bn4_3 = nn.BatchNorm2d(512, dtype=self.datatype_policy[31])
+        self.relu4_3 = nn.ReLU(inplace=True)
+        self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv5_1 = nn.Conv2d(512, 512, kernel_size=3, padding=1, dtype=self.datatype_policy[34])
+        self.bn5_1 = nn.BatchNorm2d(512, dtype=self.datatype_policy[35])
+        self.relu5_1 = nn.ReLU(inplace=True)
+        self.conv5_2 = nn.Conv2d(512, 512, kernel_size=3, padding=1, dtype=self.datatype_policy[37])
+        self.bn5_2 = nn.BatchNorm2d(512, dtype=self.datatype_policy[38])
+        self.relu5_2 = nn.ReLU(inplace=True)
+        self.conv5_3 = nn.Conv2d(512, 512, kernel_size=3, padding=1, dtype=self.datatype_policy[40])
+        self.bn5_3 = nn.BatchNorm2d(512, dtype=self.datatype_policy[41])
+        self.relu5_3 = nn.ReLU(inplace=True)
+        self.pool5 = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        
+        self.fc1 = nn.Linear(512 * 7 * 7, 4096, dtype=self.datatype_policy[44])
+        self.relu_fc1 = nn.ReLU(inplace=True)
+        self.dropout1 = nn.Dropout()
+        self.fc2 = nn.Linear(4096, 4096, dtype=self.datatype_policy[47])
+        self.relu_fc2 = nn.ReLU(inplace=True)
+        self.dropout2 = nn.Dropout()
+        self.fc3 = nn.Linear(4096, num_classes, dtype=self.datatype_policy[50])
+        
+        
+    def forward(self, x):
+        if self.datatype_policy[0] == torch.float16:
+            x = x.to(torch.float16)
+        
+        for i, module in enumerate(self.children()):    
+            if i < len(list(self.children())) - 1:
+                if self.datatype_policy[i+1] != x.dtype:
+                    if self.datatype_policy[i+1] == torch.float16:
+                        x = x.to(torch.float16)
+                    else:
+                        x = x.to(torch.float32)                
+            x = module(x)
+            
+            if i == 43:
+                x = x.view(x.size(0), -1)
+                
+        return x
+    
+    def forward_with_print(self, x):
+        if self.datatype_policy[0] == torch.float16:     # 初始类型转换
+            x = x.to(torch.float16)
+        
+        for i, module in enumerate(self.children()): 
+            layer_name = module._get_name()
+            if i == 0: print("\nEMP Precision Policy --------------------")
+            print(f"{i+1:2d}\t{layer_name:10s}\t{x.dtype}")    # 输出每层精度信息
+            
+            if i < len(list(self.children())) - 1:
+                if self.datatype_policy[i+1] != x.dtype:
+                    if self.datatype_policy[i+1] == torch.float16:
+                        x = x.to(torch.float16)
+                    else:
+                        x = x.to(torch.float32)
+            
+            x = module(x)
+            if i == 43:
+                x = x.view(x.size(0), -1)
+        return x
+
+
 
 def vgg11_bn():
     # return VGG(make_layers(cfg['A'], batch_norm=True))
@@ -506,3 +770,8 @@ def vgg16_bn():
 def vgg16_bn_emp(policy_precision_string):
     return VGG16_EMP(policy_precision_string = policy_precision_string)
 
+def vgg16_bn_imagenet():
+    return VGG16_imagenet()
+
+def vgg16_bn_emp_imagenet(policy_precision_string):
+    return VGG16_EMP_imagenet(policy_precision_string = policy_precision_string)
