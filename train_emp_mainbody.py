@@ -62,7 +62,6 @@ def fp32_train(epoch):
     
 def emp_train(epoch):
     net.train()
-    
     running_loss = 0.0
     tqdm_bar = tqdm(cifar100_training_loader, desc=f'Training Epoch {epoch}', ncols=100)
     epoch_start_time = timeit.default_timer()

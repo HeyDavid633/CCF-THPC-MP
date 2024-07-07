@@ -151,7 +151,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-net', type=str, required=True, help='net type')
     parser.add_argument('-epoch', type=int, default=5, help='epoch to train')
-    parser.add_argument('-precision', type=str, default=False, help='use which precision: fp16|fp32|amp')
+    parser.add_argument('-precision', type=str, default=False, help='use which precision: fp32|amp')
     parser.add_argument('-gpu', type=str, default=True, help='if use gpu')
     parser.add_argument('-batch_size', type=int, default=256, help='batch size for dataloader')
     parser.add_argument('-warm', type=int, default=1, help='warm up training phase')

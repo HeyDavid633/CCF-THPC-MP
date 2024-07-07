@@ -1,13 +1,16 @@
+# 7.07 GNN 训练脚本 
+#  
+# 特别谢鸣 王赫萌 先生，提供了此代码的基准
+# 在此基础上修改为我所需要的版本：fp32 | AMP版
+# 
+# python train_gnn.py -net GCN -dataset cora -precision fp32
+# python train_gnn.py -net GCN -dataset cora -precision amp
 import argparse
-import dgl
-import dgl.nn as dglnn
-
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from utils import load_data, torch_cuda_active
 import timeit
-
+from torch.cuda.amp import GradScaler, autocast
 
 def evaluate(g, features, labels, mask, model):
     model.eval()
@@ -19,9 +22,50 @@ def evaluate(g, features, labels, mask, model):
         correct = torch.sum(indices == labels)
         return correct.item() * 1.0 / len(labels)
 
+def emp_train(g, features, labels, masks, model, args):
+    model.train()
+    train_mask = masks[0]
+    val_mask = masks[1]
+    loss_fcn = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(),
+                                 lr=1e-2,
+                                 weight_decay=5e-4)
+    
+    for epoch in range(args.epoch):
+        logits = model(g, features)
+        loss = loss_fcn(logits[train_mask], labels[train_mask])
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+    acc = evaluate(g, features, labels, val_mask, model)
+    print("EMP  | Loss {:.4f} | Accuracy {:.4f} ".format(loss.item(), acc))
 
-def train(g, features, labels, masks, model, args):
+def fp32_train(g, features, labels, masks, model, args):
     # define train/val samples, loss function and optimizer
+    model.train()
+    train_mask = masks[0]
+    val_mask = masks[1]
+    loss_fcn = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(),
+                                 lr=1e-2,
+                                 weight_decay=5e-4)
+    
+    # training loop
+    for epoch in range(args.epoch):
+        logits = model(g, features)
+        loss = loss_fcn(logits[train_mask], labels[train_mask])
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+    acc = evaluate(g, features, labels, val_mask, model)
+    print("FP32 | Loss {:.4f} | Accuracy {:.4f} ".format(loss.item(), acc))
+    
+def amp_train(g, features, labels, masks, model, args):
+    # define train/val samples, loss function and optimizer
+    model.train()
+    scaler = GradScaler(enabled=True)
     train_mask = masks[0]
     val_mask = masks[1]
     loss_fcn = nn.CrossEntropyLoss()
@@ -29,34 +73,32 @@ def train(g, features, labels, masks, model, args):
                                  lr=1e-2,
                                  weight_decay=5e-4)
 
-    train_start_time = timeit.default_timer()
     # training loop
     for epoch in range(args.epoch):
-        model.train()
-        logits = model(g, features)
-        loss = loss_fcn(logits[train_mask], labels[train_mask])
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        acc = evaluate(g, features, labels, val_mask, model)
-        print("Epoch {:05d} | Loss {:.4f} | Accuracy {:.4f} ".format(
-            epoch, loss.item(), acc))
-    
-    torch.cuda.synchronize()
-    print(f"[LOGS] {args.dataset},{args.data_type},{args.device},{timeit.default_timer() - train_start_time}")
+        optimizer.zero_grad(set_to_none=True)
+        with autocast():
+            logits = model(g, features)
+            loss = loss_fcn(logits[train_mask], labels[train_mask])
+        
+        scaler.scale(loss).backward()  
+        scaler.step(optimizer)  
+        scaler.update()     
 
+    acc = evaluate(g, features, labels, val_mask, model)
+    print("AMP  | Loss {:.4f} | Accuracy {:.4f} ".format(loss.item(), acc))
 
 if __name__ == "__main__":
     torch.manual_seed(0) 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--net", type=str, default='GCN', help="which GNN: GCN | GAT")
-    parser.add_argument("--dataset", type=str, default='reddit', help="the input dataset")
-    parser.add_argument("--epoch", type=int, default=10, help="the number of training epochs")
-    parser.add_argument("--n_hidden", type=int, default=128, help="the number of hidden units")
-    parser.add_argument("--n_layers", "--n_layers", type=int, default=2, help="the number of GCN layers")
-    parser.add_argument("--sub_rate", type=float, default=None, help="the number representing the ratio of subgraph")
-    parser.add_argument("--data_type",type=str, default='float32', help="the train data type")
-    parser.add_argument("--device", type=str, default='cuda', help="the training device")
+    parser.add_argument("-net", type=str, default='GCN', help="which GNN: GCN | GAT")
+    parser.add_argument("-dataset", type=str, default='reddit', help="the input dataset")
+    parser.add_argument("-epoch", type=int, default=100, help="the number of training epochs")
+    parser.add_argument("-n_hidden", type=int, default=128, help="the number of hidden units")
+    parser.add_argument("-n_layers", type=int, default=2, help="the number of GCN layers")
+    parser.add_argument("-sub_rate", type=float, default=None, help="the number representing the ratio of subgraph")
+    parser.add_argument('-precision', type=str, default='fp32', help='use which precision: fp32|amp')
+    parser.add_argument("-repeat_times", type=int, default=10, help="the number repeat to train")
+    parser.add_argument("-device", type=str, default='cuda', help="the training device")
     args = parser.parse_args()
 
     data = load_data(args)
@@ -70,25 +112,64 @@ if __name__ == "__main__":
     masks = g.ndata["train_mask"], g.ndata["val_mask"], g.ndata["test_mask"]
     n_class = g.ndata['label'].max().item() + 1
 
-    # create model
+    
     in_size = features.shape[1]
     out_size = n_class
     
-    if args.net == 'GCN':
-        from models.gnn import GCN
-        model = GCN(in_size, args.n_hidden, out_size).to(device)
+    train_start_time = timeit.default_timer()
+    for i in range(args.repeat_times):   
+        if args.precision != 'emp':
+            # create model
+            if args.net == 'GCN':
+                from models.gnn import GCN_flatten
+                model = GCN_flatten(in_size, args.n_hidden, out_size).to(device)
+            elif args.net == 'GAT':
+                from models.gnn import GAT_flatten
+                model = GAT_flatten(in_size, args.n_hidden, out_size, heads=[8, 1]).to(device)
 
-    # convert model and graph to bfloat16 if needed
-    if args.data_type == "bfloat16":
-        g = dgl.to_bfloat16(g)
-        features = features.to(dtype=torch.bfloat16)
-        model = model.to(dtype=torch.bfloat16)
-
-    # model training
-    print("Training...")
-    train(g, features, labels, masks, model, args)
+            # model training
+            if args.precision == 'fp32':
+                fp32_train(g, features, labels, masks, model, args)
+            elif args.precision == 'amp':
+                amp_train(g, features, labels, masks, model, args)
+                
+        elif args.precision == 'emp':
+            if args.net == 'GCN':
+                model_layer_num = 5
+                policy_precision_string = '0'*model_layer_num
+                from models.gnn import GCN_flatten_emp
+                model = GCN_flatten_emp(in_size, args.n_hidden, out_size,  policy_precision_string=policy_precision_string).to(device)
+            elif args.net == 'GAT':
+                model_layer_num = 4
+                policy_precision_string = '0'*model_layer_num
+                from models.gnn import GAT_flatten_emp
+                model = GAT_flatten_emp(in_size, args.n_hidden, out_size, heads=[8, 1],  policy_precision_string=policy_precision_string).to(device)
+            
+            emp_train(g, features, labels, masks, model, args)
+    
+    torch.cuda.synchronize()
+    train_end_time = timeit.default_timer()
+    
+    
+    # print_model_summary(model, (in_size,))
+    
 
     # test the model
     print("Testing...")
     acc = evaluate(g, features, labels, masks[2], model)
     print("Test accuracy {:.4f}".format(acc))
+        
+
+    print('\n\nTraining summary', '-'*50,'\n{} {} {} epoch, \tPrecision Policy: {}'.format(args.net, args.dataset, args.epoch, args.precision))
+    print('Each epoch average cost time: {:.6f} sec, \tFinal Accuracy: {:.4f}'.format((train_end_time - train_start_time) / (args.epoch * args.repeat_times), acc))
+    print('Max GPU memory: {:.2f} MB'.format(torch.cuda.max_memory_allocated() / (1024 ** 2)))
+    
+    if args.epoch <= 5: 
+        summary_info_txt_filename = 'Log_Performance_GPU_memory.txt'
+    else:
+        summary_info_txt_filename = 'Log_Accuracy.txt'
+        
+    with open(summary_info_txt_filename, 'a') as f: 
+        print('{} {} {} epoch, \tPrecision Policy: {}'.format(args.net, args.dataset, args.epoch, args.precision), file=f)
+        print('Each epoch average cost time: {:.2f} sec, \tFinal Accuracy: {:.4f}'.format((train_end_time - train_start_time) / (args.epoch * args.repeat_times), acc), file=f)
+        print('Max GPU memory: {:.2f} MB\n'.format(torch.cuda.max_memory_allocated() / (1024 ** 2)), file=f)
