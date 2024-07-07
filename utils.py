@@ -16,47 +16,17 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from torch.utils.data import DataLoader
 
-
-def get_network(args):  
-    """ return given network
-    """
-    # AlexNet ----------------------------  
-    if args.net == 'alexnet':   
-        from models.alexnet import alexnet
-        net = alexnet()
-    #Vgg serial ----------------------------    
-    elif args.net == 'vgg16':
-        from models.vgg import vgg16_bn
-        net = vgg16_bn()
-    elif args.net == 'vgg11':
-        from models.vgg import vgg11_bn
-        net = vgg11_bn()
-        
-    #resnet50 -------------------------
-    elif args.net == 'resnet50':
-        from models.resnet import resnet50
-        net = resnet50()
-        
-    # inceptionv3 --------------------
-    elif args.net == 'inceptionv3':
-        from models.inceptionv3 import inceptionv3
-        net = inceptionv3()
-
-    # shuffleNet --------------------
-    elif args.net == 'shufflenet':
-        from models.shufflenet import shufflenet
-        net = shufflenet()
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+import dgl
+from ogb.nodeproppred import DglNodePropPredDataset
+from dgl.data import FlickrDataset, RedditDataset, YelpDataset
+from dgl.data import CiteseerGraphDataset, CoraGraphDataset, PubmedGraphDataset
 
 
-        
-    else:
-        print('the network name you have entered is not supported yet')
-        sys.exit()
-
-    if args.gpu: #use_gpu
-        net = net.cuda()
-
-    return net
+dgl_dataset_path = '/workspace/CCF-THPC-MP/data/dgl'
+cifar100_dataset_path = '/workspace/CCF-THPC-MP/data/cifar-100-python'
+imagenet_dataset_path = '/workspace/CCF-THPC-MP/data/imagenet'
 
 
 def get_training_dataloader(mean, std, batch_size=16, num_workers=2, shuffle=True):
@@ -80,7 +50,7 @@ def get_training_dataloader(mean, std, batch_size=16, num_workers=2, shuffle=Tru
         transforms.Normalize(mean, std)
     ])
     #cifar100_training = CIFAR100Train(path, transform=transform_train)
-    cifar100_training = torchvision.datasets.CIFAR100(root='./data', train=True, download=True, transform=transform_train)
+    cifar100_training = torchvision.datasets.CIFAR100(root=cifar100_dataset_path, train=True, download=True, transform=transform_train)
     cifar100_training_loader = DataLoader(
         cifar100_training, shuffle=shuffle, num_workers=num_workers, batch_size=batch_size)
 
@@ -103,7 +73,7 @@ def get_test_dataloader(mean, std, batch_size=16, num_workers=2, shuffle=True):
         transforms.Normalize(mean, std)
     ])
     #cifar100_test = CIFAR100Test(path, transform=transform_test)
-    cifar100_test = torchvision.datasets.CIFAR100(root='./data', train=False, download=True, transform=transform_test)
+    cifar100_test = torchvision.datasets.CIFAR100(root=cifar100_dataset_path, train=False, download=True, transform=transform_test)
     cifar100_test_loader = DataLoader(
         cifar100_test, shuffle=shuffle, num_workers=num_workers, batch_size=batch_size)
 
@@ -203,7 +173,7 @@ def best_acc_weights(weights_folder):
     best_files = sorted(best_files, key=lambda w: int(re.search(regex_str, w).groups()[1]))
     return best_files[-1]
 
-def load_ImageNet(ImageNet_PATH, batch_size=64, workers=3, pin_memory=True): 
+def load_ImageNet(ImageNet_PATH = imagenet_dataset_path, batch_size=64, workers=3, pin_memory=True): 
     
     traindir = os.path.join(ImageNet_PATH, 'train')
     valdir   = os.path.join(ImageNet_PATH, 'val')
@@ -251,6 +221,128 @@ def load_ImageNet(ImageNet_PATH, batch_size=64, workers=3, pin_memory=True):
         pin_memory=pin_memory
     )
     return train_loader, val_loader, train_dataset, val_dataset
+
+
+
+
+def load_ogb_dataset(name):
+    dataset = DglNodePropPredDataset(name=name)
+    split_idx = dataset.get_idx_split()
+    g, label = dataset[0]
+    if name == 'ogbn-mag':
+        g = dgl.to_homogeneous(g)
+        n_node = g.num_nodes()
+        num_train = int(n_node * 0.9)
+        num_val = int(n_node * 0.05)
+        g.ndata['train_mask'] = torch.zeros(n_node, dtype=torch.bool)
+        g.ndata['val_mask'] = torch.zeros(n_node, dtype=torch.bool)
+        g.ndata['test_mask'] = torch.zeros(n_node, dtype=torch.bool)
+        g.ndata['train_mask'][:num_train] = True
+        g.ndata['val_mask'][num_train:num_train + num_val] = True
+        g.ndata['test_mask'][num_train + num_val:] = True
+        label = torch.randint(0, 10, (n_node, ))
+        g.ndata['label'] = label
+        g.ndata['feat'] = torch.rand(n_node, 128)
+        return g
+
+    n_node = g.num_nodes()
+    node_data = g.ndata
+
+    if name == 'ogbn-proteins':
+        label = torch.randint(0, 10, (n_node, ))
+        node_data['label'] = label
+        g.ndata['feat'] = torch.rand(n_node, 128)
+    else:
+        node_data['label'] = label.view(-1).long()
+
+    node_data['train_mask'] = torch.zeros(n_node, dtype=torch.bool)
+    node_data['val_mask'] = torch.zeros(n_node, dtype=torch.bool)
+    node_data['test_mask'] = torch.zeros(n_node, dtype=torch.bool)
+    node_data['train_mask'][split_idx["train"]] = True
+    node_data['val_mask'][split_idx["valid"]] = True
+    node_data['test_mask'][split_idx["test"]] = True
+
+    return g
+
+def sub_save_graph(g, path):
+    dgl.save_graphs(path, g)
+
+def load_sub_graph(path):
+    sub_g = dgl.load_graphs(path)[0][0]
+    return sub_g
+
+def sample_sub_graph(g, ratio):
+    n = g.num_nodes()
+    nodes = np.arange(int(n * ratio))
+    sub_g = dgl.node_subgraph(graph=g, nodes=nodes)
+    return sub_g
+
+def load_data(args):
+    if args.dataset == 'reddit':
+        data = RedditDataset(raw_dir=dgl_dataset_path)
+        g = data[0]
+    elif args.dataset == 'ogbn-arxiv':
+        g = load_ogb_dataset('ogbn-arxiv')
+    elif args.dataset == 'ogbn-proteins':
+        g = load_ogb_dataset('ogbn-proteins')
+    elif args.dataset == 'ogbn-products':
+        g = load_ogb_dataset('ogbn-products')
+    elif args.dataset == 'ogbn-mag':
+        g = load_ogb_dataset('ogbn-mag')
+    elif args.dataset == 'ogbn-papers100m':
+        g = load_ogb_dataset('ogbn-papers100M')
+    elif args.dataset == 'yelp':
+        data = YelpDataset(raw_dir=dgl_dataset_path)
+        g = data[0]
+        g.ndata['label'] = g.ndata['label'].float()
+        g.ndata['train_mask'] = g.ndata['train_mask'].bool()
+        g.ndata['val_mask'] = g.ndata['val_mask'].bool()
+        g.ndata['test_mask'] = g.ndata['test_mask'].bool()
+        feats = g.ndata['feat']
+        scaler = StandardScaler()
+        scaler.fit(feats[g.ndata['train_mask']])
+        feats = scaler.transform(feats)
+        g.ndata['feat'] = torch.tensor(feats, dtype=torch.float)
+    elif args.dataset == 'flickr':
+        data = FlickrDataset(raw_dir=dgl_dataset_path)
+        g = data[0]
+        g.ndata['label'] = g.ndata['label'].long()
+        g.ndata['train_mask'] = g.ndata['train_mask'].bool()
+        g.ndata['val_mask'] = g.ndata['val_mask'].bool()
+        g.ndata['test_mask'] = g.ndata['test_mask'].bool()
+        feats = g.ndata['feat']
+        scaler = StandardScaler()
+        scaler.fit(feats[g.ndata['train_mask']])
+        feats = scaler.transform(feats)
+        g.ndata['feat'] = torch.tensor(feats, dtype=torch.float)
+    elif args.dataset == "cora":
+        data = CoraGraphDataset(raw_dir=dgl_dataset_path)
+        g = data[0]
+    elif args.dataset == "citeseer":
+        data = CiteseerGraphDataset(raw_dir=dgl_dataset_path)
+        g = data[0]
+    elif args.dataset == "pubmed":
+        data = PubmedGraphDataset(raw_dir=dgl_dataset_path)
+        g = data[0]
+    else:
+        raise ValueError('Unknown dataset: {}'.format(args.dataset))
+
+    n_feat = g.ndata['feat'].shape[1]
+    if g.ndata['label'].dim() == 1:
+        n_class = g.ndata['label'].max().item() + 1
+    else:
+        n_class = g.ndata['label'].shape[1]
+
+    g.edata.clear()
+
+    if args.sub_rate != None :
+        print("Subsampling the graph with rate", args.sub_rate)
+        g = sample_sub_graph(g, args.sub_rate)
+
+    g = dgl.remove_self_loop(g)
+    g = dgl.add_self_loop(g)
+
+    return g, n_feat, n_class
 
 
 

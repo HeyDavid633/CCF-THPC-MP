@@ -17,7 +17,6 @@ from conf import settings
 from utils import WarmUpLR, torch_cuda_active, load_ImageNet
 
 csv_filename = 'imagenet_loss.csv'
-ImageNet_PATH = '/workspace/CCF-THPC-MP/data/imagenet' 
 each_epoch_time = []
 
     
@@ -130,7 +129,7 @@ if __name__ == '__main__':
         net = vgg16_bn_emp_imagenet(policy_precision_string = policy_precision_string)
         
 
-    train_loader, val_loader, train_dataset, val_dataset = load_ImageNet(ImageNet_PATH, batch_size = args.batch_size, workers = 4)
+    train_loader, val_loader, train_dataset, val_dataset = load_ImageNet(batch_size = args.batch_size, workers = 4)
     
     device = torch_cuda_active() 
     net = net.to(device)

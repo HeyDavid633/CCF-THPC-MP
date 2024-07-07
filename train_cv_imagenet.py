@@ -20,7 +20,6 @@ from utils import WarmUpLR, torch_cuda_active, load_ImageNet
 
 scaler = GradScaler(enabled=True)
 csv_filename = 'imagenet_loss.csv'
-ImageNet_PATH = '/workspace/CCF-THPC-MP/data/imagenet'   # absolute path of working dir
 each_epoch_time = []
 
 def append_info_to_csv(info_data, filename):
@@ -153,7 +152,7 @@ if __name__ == '__main__':
     csv_filename = 'log/imagenet/' + args.net + '_' + args.precision + '_' + str(args.epoch) + '_' + csv_filename    
     append_to_csv('Epoch', f'{args.precision}_loss', csv_filename) 
     
-    train_loader, val_loader, train_dataset, val_dataset = load_ImageNet(ImageNet_PATH, batch_size = args.batch_size, workers = 4)
+    train_loader, val_loader, train_dataset, val_dataset = load_ImageNet(batch_size = args.batch_size, workers = 4)
 
     device = torch_cuda_active() 
     net = net.to(device)

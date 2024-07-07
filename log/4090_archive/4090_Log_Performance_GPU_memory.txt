@@ -1,0 +1,23 @@
+vgg16 with 1 epoch,     Precision Policy: emp,  Total training time: 38.95 min
+Each epoch average cost time: 2281.51 sec,      Final Accuracy: 0.0486
+Max GPU memory: 9402.84 MB
+
+alexnet with 1 epoch,   Precision Policy: emp,  Total training time: 23.30 min
+Each epoch average cost time: 1329.90 sec,      Final Accuracy: 0.0370
+Max GPU memory: 1083.58 MB
+
+alexnet with 1 epoch,   Precision Policy: amp,  Total training time: 23.97 min
+Each epoch average cost time: 1383.36 sec,      Final Accuracy: 0.0000
+Max GPU memory: 1463.80 MB
+
+alexnet with 1 epoch,   Precision Policy: fp32,         Total training time: 23.37 min
+Each epoch average cost time: 1340.39 sec,      Final Accuracy: 0.0000
+Max GPU memory: 1698.54 MB
+
+vgg16 with 1 epoch,     Precision Policy: amp,  Total training time: 39.06 min
+Each epoch average cost time: 2287.73 sec,      Final Accuracy: 0.0000
+Max GPU memory: 10367.68 MB
+
+vgg16 with 1 epoch,     Precision Policy: fp32,         Total training time: 62.11 min
+Each epoch average cost time: 3671.21 sec,      Final Accuracy: 0.0000
+Max GPU memory: 17176.50 MB
