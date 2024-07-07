@@ -1,0 +1,12 @@
+vgg16 with 1 epoch,     Precision Policy: emp,  Total training time: 48.05 min
+Each epoch average cost time: 2792.61 sec,      Final Accuracy: 0.0405
+Max GPU memory: 9430.84 MB
+
+vgg16 with 1 epoch, 	Precision Policy: amp, 	Total training time: 49.74 min
+Each epoch average cost time: 2895.72 sec, 	Final Accuracy: 0.0000
+Max GPU memory: 10368.68 MB
+
+vgg16 with 1 epoch, 	Precision Policy: fp32, 	Total training time: 73.86 min
+Each epoch average cost time: 4346.02 sec, 	Final Accuracy: 0.0000
+Max GPU memory: 17201.88 MB
+

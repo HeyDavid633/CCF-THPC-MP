@@ -1,4 +1,0 @@
-alexnet with 1 epoch, 	Precision Policy: emp, 	Total training time: 23.40 min
-Each epoch average cost time: 1340.06 sec, 	Final Accuracy: 0.0437
-Max GPU memory: 1083.58 MB
-
