@@ -62,9 +62,10 @@ def fp32_train(g, features, labels, masks, model, args):
     acc = evaluate(g, features, labels, val_mask, model)
     print("FP32 | Loss {:.4f} | Accuracy {:.4f} ".format(loss.item(), acc))
     
-def amp_train(g, features, labels, masks, model, args):
+def amp_train(g, features, labels, masks, model, args, amp_dtype):
     # define train/val samples, loss function and optimizer
     model.train()
+    amp_enabled = amp_dtype in (torch.float16, torch.float32)
     scaler = GradScaler(enabled=True)
     train_mask = masks[0]
     val_mask = masks[1]
@@ -76,7 +77,7 @@ def amp_train(g, features, labels, masks, model, args):
     # training loop
     for epoch in range(args.epoch):
         optimizer.zero_grad(set_to_none=True)
-        with autocast():
+        with autocast(enabled=amp_enabled, dtype=amp_dtype):
             logits = model(g, features)
             loss = loss_fcn(logits[train_mask], labels[train_mask])
         
@@ -131,7 +132,8 @@ if __name__ == "__main__":
             if args.precision == 'fp32':
                 fp32_train(g, features, labels, masks, model, args)
             elif args.precision == 'amp':
-                amp_train(g, features, labels, masks, model, args)
+                amp_dtype = torch.float16 # 在论文中要写明，GNN实验时 用的是float16而非bfloat16
+                amp_train(g, features, labels, masks, model, args, amp_dtype)
                 
         elif args.precision == 'emp':
             if args.net == 'GCN':

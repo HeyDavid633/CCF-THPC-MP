@@ -116,11 +116,9 @@ def eval_training(epoch=0, tb=False):
     correct = 0.0
 
     for (images, labels) in cifar100_test_loader:
-        if args.gpu:
-            images = images.cuda()
-            labels = labels.cuda()
-            if args.precision == 'fp16':
-                images = images.half()
+        
+        images = images.cuda()
+        labels = labels.cuda()
 
         outputs = net(images)
         loss = loss_function(outputs, labels)

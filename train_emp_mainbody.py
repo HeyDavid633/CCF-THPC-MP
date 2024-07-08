@@ -4,7 +4,7 @@
 # 数据集针对 CIFAR100 以AlexNet为例实现主体方法 :
 # 模型训练的信息提取， 需要实现特殊的训练器1-按epoch采集、训练器2-按batch采集
 # 
-# emp    python train_cv_emp.py -net alexnet -epoch 1 -precision emp 
+# emp    python train_emp_mainbody.py -net alexnet -epoch 1 -precision emp 
 import csv
 import argparse
 import timeit
@@ -303,10 +303,10 @@ if __name__ == '__main__':
     
     stage1_op, all_layer_op = info_sample()   
     # 用一个batch 采集算子各个层的精度信息, 检查对于这个串的采集结果 --- 两个串（实际上adjustable_id_list也应在这里体现）            
-    # print("\nStage 1 Operations "+"-"*50)
-    # for op in stage1_op: print(f"{op['id']:3d}\t{op['layer_name']:10s}\t{op['data_type']}")
-    # print("\nAll Layer Operations "+"-"*50)
-    # for op in all_layer_op: print(f"{op['id']:3d}\t{op['layer_name']:10s}\t{op['data_type']}")
+    print("\nStage 1 Operations "+"-"*50)
+    for op in stage1_op: print(f"{op['id']:3d}\t{op['layer_name']:10s}\t{op['data_type']}")
+    print("\nAll Layer Operations "+"-"*50)
+    for op in all_layer_op: print(f"{op['id']:3d}\t{op['layer_name']:10s}\t{op['data_type']}")
     
     stage1_sampler_counter = 0
     for op in stage1_op:
