@@ -165,7 +165,7 @@ if __name__ == '__main__':
     else:
         from models.gan import Generator_emp, Discriminator_emp
         # model_layer_num = 6
-        policy_precision_string = '111111'
+        policy_precision_string = '000000'
         gan_generator = Generator_emp(policy_precision_string = policy_precision_string).to(device)
         gan_discriminator = Discriminator_emp(policy_precision_string = policy_precision_string).to(device)
     
