@@ -13,7 +13,7 @@ import timeit
 from tqdm import tqdm
 from utils import torch_cuda_active
 import pickle
-from transformers import BertForQuestionAnswering, BertTokenizer, BertForQuestionAnswering, AdamW
+from transformers import BertForQuestionAnswering, BertTokenizer, AdamW
 import torch
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 from torch.cuda.amp import GradScaler, autocast

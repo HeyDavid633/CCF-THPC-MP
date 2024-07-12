@@ -1,7 +1,7 @@
 # 7.08 GAN网络训练脚本
 # 
 # 
-# 
+# python train_gan.py -epoch 10 -precision emp
 # 
 # 
 import argparse
@@ -148,12 +148,12 @@ if __name__ == '__main__':
     settings.EPOCH = args.epoch
     
     transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(0.5, 0.5)])
-    # train_datasets = torchvision.datasets.MNIST(MNIST_dataset_path, train=True, transform=transform, download=True)
-    # train_dataloader = torch.utils.data.DataLoader(train_datasets, batch_size=args.batch_size, shuffle=True)
-    # val_datasets = torchvision.datasets.MNIST(MNIST_dataset_path, train=False, transform=transform, download=True)
-    # val_dataloader = torch.utils.data.DataLoader(val_datasets, batch_size=args.batch_size, shuffle=False)
+    train_datasets = torchvision.datasets.MNIST(MNIST_dataset_path, train=True, transform=transform, download=True)
+    train_dataloader = torch.utils.data.DataLoader(train_datasets, batch_size=args.batch_size, shuffle=True)
+    val_datasets = torchvision.datasets.MNIST(MNIST_dataset_path, train=False, transform=transform, download=True)
+    val_dataloader = torch.utils.data.DataLoader(val_datasets, batch_size=args.batch_size, shuffle=False)
     
-    train_dataloader, val_dataloader, train_datasets, val_datasets = load_ImageNet(batch_size = args.batch_size, workers = 4)
+    # train_dataloader, val_dataloader, train_datasets, val_datasets = load_ImageNet(batch_size = args.batch_size, workers = 4)
     
     device = torch_cuda_active()
 
@@ -196,7 +196,7 @@ if __name__ == '__main__':
 
 
     print('\n\nTraining summary', '-'*50,'\nGAN {} epoch, \tPrecision Policy: {}, \tTotal training time: {:.2f} min'.format(settings.EPOCH, args.precision, (train_end_time - train_start_time)/60))
-    print('Each epoch average cost time: {:.2f} sec, \tFinal Accuracy: {:.4f}'.format(sum(each_epoch_time) / settings.EPOCH, best_acc))
+    print('Each epoch average cost time: {:.4f} sec, \tFinal Accuracy: {:.4f}'.format(sum(each_epoch_time) / settings.EPOCH, best_acc))
     print('Max GPU memory: {:.2f} MB'.format(torch.cuda.max_memory_allocated() / (1024 ** 2)))
     
     if settings.EPOCH <= 5: 

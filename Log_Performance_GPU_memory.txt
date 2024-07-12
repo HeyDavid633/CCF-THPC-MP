@@ -1,6 +1,0 @@
-
-
-Training summary -------------------------------------------------- 
-GAN 1 epoch, 	Precision Policy: fp32, 	Total training time: 23.25 min
-Each epoch average cost time: 1335.64 sec, 	Final Accuracy: 95.5074
-Max GPU memory: 560.76 MB
