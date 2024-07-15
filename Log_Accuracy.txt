@@ -1,0 +1,44 @@
+alexnet with 50 epoch, 	Precision Policy: emp, 	Total training time: 3.50 min
+Each epoch average cost time: 3.70 sec, 	Final Accuracy: 0.0100
+Max GPU memory: 340.73 MB
+
+alexnet with 50 epoch, 	Precision Policy: emp, 	Total training time: 3.53 min
+Each epoch average cost time: 3.74 sec, 	Final Accuracy: 0.4249
+Max GPU memory: 340.73 MB
+
+vgg16 with 50 epoch, 	Precision Policy: emp, 	Total training time: 4.14 min
+Each epoch average cost time: 4.45 sec, 	Final Accuracy: 0.6214
+Max GPU memory: 578.46 MB
+
+vgg16 with 60 epoch, 	Precision Policy: emp, 	Total training time: 4.96 min
+Each epoch average cost time: 4.43 sec, 	Final Accuracy: 0.6225
+Max GPU memory: 578.46 MB
+
+GCN cora 100 epoch, 	Precision Policy: emp
+Each epoch average cost time: 0.00 sec, 	Final Accuracy: 0.7960
+Max GPU memory: 54.38 MB
+
+GCN cora 100 epoch, 	Precision Policy: emp
+Each epoch average cost time: 0.00 sec, 	Final Accuracy: 0.7960
+Max GPU memory: 54.38 MB
+
+GCN cora 100 epoch, 	Precision Policy: emp
+Each epoch average cost time: 0.00 sec, 	Final Accuracy: 0.7950
+Max GPU memory: 54.41 MB
+
+GCN cora 100 epoch, 	Precision Policy: emp
+Each epoch average cost time: 0.00 sec, 	Final Accuracy: 0.7950
+Max GPU memory: 54.41 MB
+
+GCN cora 100 epoch, 	Precision Policy: emp
+Each epoch average cost time: 0.00 sec, 	Final Accuracy: 0.7960
+Max GPU memory: 54.38 MB
+
+GAT cora 100 epoch, 	Precision Policy: emp
+Each epoch average cost time: 0.01 sec, 	Final Accuracy: 0.8190
+Max GPU memory: 130.01 MB
+
+GAT cora 100 epoch, 	Precision Policy: emp
+Each epoch average cost time: 0.01 sec, 	Final Accuracy: 0.8190
+Max GPU memory: 130.01 MB
+
