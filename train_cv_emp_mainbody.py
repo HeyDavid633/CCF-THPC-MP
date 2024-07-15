@@ -158,7 +158,7 @@ def info_sample():
 def generate_strings_for_stage2(stage1_policy_selected, stage1_op):
     # 添加两端的边界，使得算法更简洁
     stage1_op.insert(0, {'id': -1})
-    stage1_op.append({'id': len(stage1_policy_selected) - 1})  # 修改这里
+    stage1_op.append({'id': len(stage1_policy_selected) - 1}) 
     
     # 初始化结果列表
     results = [stage1_policy_selected]
@@ -166,7 +166,7 @@ def generate_strings_for_stage2(stage1_policy_selected, stage1_op):
     # 遍历每一个分割点
     for i in range(len(stage1_op) - 1):
         start = stage1_op[i]['id'] + 1
-        end = stage1_op[i + 1]['id']  # 不需要修改这里，但需要确保在后续逻辑中正确使用
+        end = stage1_op[i + 1]['id']  
         
         # 只有当段的长度大于1且开始和结束字符不同才需要枚举
         if end - start > 0 and stage1_policy_selected[start] != stage1_policy_selected[end]:

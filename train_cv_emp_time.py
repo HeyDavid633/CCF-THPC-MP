@@ -96,7 +96,7 @@ def eval_training(epoch=0, tb=False):
 
 
 if __name__ == '__main__':
-    torch.manual_seed(1)    #确保不同精度在进入权重相同  一般是0  1对于alexnet好收敛
+    torch.manual_seed(0)    #确保不同精度在进入权重相同  一般是0  1对于alexnet好收敛
     parser = argparse.ArgumentParser()
     parser.add_argument('-net', type=str, required=True, help='net type')
     parser.add_argument('-epoch', type=int, default=5, help='epoch to train')

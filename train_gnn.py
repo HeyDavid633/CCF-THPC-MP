@@ -138,7 +138,7 @@ if __name__ == "__main__":
         elif args.precision == 'emp':
             if args.net == 'GCN':
                 model_layer_num = 5
-                policy_precision_string = '0'*model_layer_num
+                policy_precision_string = '00000'
                 from models.gnn import GCN_flatten_emp
                 model = GCN_flatten_emp(in_size, args.n_hidden, out_size,  policy_precision_string=policy_precision_string).to(device)
             elif args.net == 'GAT':
