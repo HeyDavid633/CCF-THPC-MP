@@ -1,0 +1,7 @@
+Model,only Stage1,only Stage2,Stage1 + Stage2
+AlexNet,2.34,2.09,2.09
+Vgg16,2.61,2.28,2.29
+GAN,3.42,NaN,3.29
+GCN,3.03,2.87,2.87
+GAT,5.84,5.51,5.54
+BERT-base,0.82,NaN,0.80

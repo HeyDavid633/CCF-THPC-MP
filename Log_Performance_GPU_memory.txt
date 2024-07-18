@@ -1,0 +1,12 @@
+
+
+Training summary -------------------------------------------------- 
+GAN 5 epoch, 	Precision Policy: amp, 	Total training time: 0.51 min
+Each epoch average cost time: 5.42 sec, 	Final Accuracy: 1.0000
+Max GPU memory: 37.77 MB
+
+
+Training summary -------------------------------------------------- 
+GAN 5 epoch, 	Precision Policy: emp, 	Total training time: 0.79 min
+Each epoch average cost time: 8.27 sec, 	Final Accuracy: 0.5000
+Max GPU memory: 27.65 MB

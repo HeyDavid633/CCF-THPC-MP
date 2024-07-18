@@ -1,0 +1,7 @@
+Model,only Stage1,only Stage2,Stage1 + Stage2
+AlexNet,62.28%,60.90%,62.55%
+Vgg16,70.15%,70.09%,70.12%
+GAN,48.79%,NaN,48.79%
+GCN,79.60%,79.60%,79.60%
+GAT,81.90%,81.90%,81.90%
+BERT-base,88.0,NaN,88.0 
