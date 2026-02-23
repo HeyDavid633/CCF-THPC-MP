@@ -11,6 +11,9 @@ df = pd.read_csv('ablation_data_time.csv')
 font_path = '../Times2.ttf'
 prop1 = fm.FontProperties(fname=font_path, size=24)
 prop2 = fm.FontProperties(fname=font_path, size=20)
+simsun_path = '/System/Library/Fonts/Supplemental/Songti.ttc'  # Mac 宋体
+prop_cn_large = fm.FontProperties(fname=simsun_path, size=24)
+prop_cn_small = fm.FontProperties(fname=simsun_path, size=20)
 
 # 准备数据
 models = df['Model'].values.tolist()
@@ -24,12 +27,16 @@ fig, ax1 = plt.subplots(figsize=(10, 6))
 # 绘制柱状图
 bar_width = 0.25
 index = np.arange(len(models))
-bar1 = ax1.bar(index, stage1_only, bar_width*0.85, color='#FFA543', label='Only Stage 1')
-bar2 = ax1.bar(index + bar_width, stage2_only, bar_width*0.85, color='#FF7F0E', label='Only Stage 2')
-bar3 = ax1.bar(index + 2 * bar_width, stage1_2, bar_width*0.85, color='#729DC7', label='Stage 1 + Stage 2')
+bar1 = ax1.bar(index, stage1_only, bar_width*0.85, color='#FFA543', label='仅阶段一')
+bar2 = ax1.bar(index + bar_width, stage2_only, bar_width*0.85, color='#FF7F0E', label='仅阶段二')
+bar3 = ax1.bar(index + 2 * bar_width, stage1_2, bar_width*0.85, color='#729DC7', label='阶段一 + 阶段二')
+
+for i, height in enumerate(stage2_only):
+    if height == 0:
+        ax1.text(index[i] + bar_width, height + 0.2, 'NaN', ha='center', rotation = 90, va='bottom', fontproperties=prop2)
 
 # 设置Y轴刻度和标签
-ax1.set_ylabel('Time Per Iteration (s)', fontproperties=prop1)
+ax1.set_ylabel('每轮次时间开销 (s)', fontproperties=prop_cn_large)
 ax1.set_ylim(0, 6.0)  # 设置Y轴上限为6.0
 ax1.set_yticks(np.arange(0.0, 6.1, 1))  # 设置Y轴刻度从1.0开始，间隔为1.0
 ax1.set_yticklabels(['{:.1f}'.format(y) for y in np.arange(0.0, 6.1, 1)])  # 显示小数点后一位
@@ -39,11 +46,11 @@ ax1.set_xticklabels(models, fontproperties=prop2)
 plt.yticks(fontproperties=prop1)
 
 # 添加图例
-ax1.legend(loc='upper center', bbox_to_anchor=(0.5, 1.19), prop=prop2, ncols=3)
+ax1.legend(loc='upper center', bbox_to_anchor=(0.5, 1.19), prop=prop_cn_small, ncols=3)
 
 # 设置标题和横轴标签
-ax1.set_xlabel('Model', fontproperties=prop1)
+ax1.set_xlabel('模型', fontproperties=prop_cn_large)
 
 plt.grid(True, axis='y', linestyle='--', linewidth=0.5)
 plt.tight_layout()
-plt.savefig("evaE_ablation_time.pdf")
+plt.savefig("evaE_ablation_time_CN.pdf")
